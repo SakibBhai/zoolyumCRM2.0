@@ -1,0 +1,436 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User and Authentication Models
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  avatar        String?
+  role          UserRole  @default(AGENT)
+  department    String?
+  phone         String?
+  isActive      Boolean   @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  assignedLeads Lead[]    @relation("AssignedAgent")
+  createdLeads  Lead[]    @relation("CreatedBy")
+  clients       Client[]  @relation("AssignedAgent")
+  projects      Project[] @relation("ProjectManager")
+  tasks         Task[]    @relation("AssignedTo")
+  createdTasks  Task[]    @relation("CreatedBy")
+  proposals     Proposal[]
+  invoices      Invoice[]
+  timeEntries   TimeEntry[]
+  activities    Activity[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+// Lead Management Models
+model Lead {
+  id          String     @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String
+  phone       String?
+  company     String?
+  position    String?
+  source      LeadSource @default(WEBSITE)
+  status      LeadStatus @default(NEW)
+  score       Int        @default(0)
+  value       Float      @default(0)
+  notes       String?
+  tags        String?
+  assignedId  String?
+  createdById String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  assigned  User?      @relation("AssignedAgent", fields: [assignedId], references: [id])
+  createdBy User       @relation("CreatedBy", fields: [createdById], references: [id])
+  client    Client?
+  activities Activity[]
+
+  @@map("leads")
+}
+
+// Client Management Models
+model Client {
+  id           String       @id @default(cuid())
+  leadId       String?      @unique
+  name         String
+  email        String       @unique
+  phone        String?
+  company      String?
+  address      String?
+  website      String?
+  industry     String?
+  size         CompanySize?
+  status       ClientStatus @default(ACTIVE)
+  healthScore  Int          @default(50)
+  totalValue   Float        @default(0)
+  assignedId   String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  lead       Lead?     @relation(fields: [leadId], references: [id])
+  assigned   User?     @relation("AssignedAgent", fields: [assignedId], references: [id])
+  projects   Project[]
+  proposals  Proposal[]
+  invoices   Invoice[]
+  activities Activity[]
+
+  @@map("clients")
+}
+
+// Project Management Models
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(PLANNING)
+  priority    Priority      @default(MEDIUM)
+  budget      Float?
+  startDate   DateTime?
+  endDate     DateTime?
+  progress    Int           @default(0)
+  clientId    String
+  managerId   String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  client     Client     @relation(fields: [clientId], references: [id])
+  manager    User       @relation("ProjectManager", fields: [managerId], references: [id])
+  tasks      Task[]
+  proposals  Proposal[]
+  invoices   Invoice[]
+  activities Activity[]
+
+  @@map("projects")
+}
+
+// Task Management Models
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?
+  estimatedHours Float?
+  actualHours    Float?
+  projectId   String?
+  assignedId  String?
+  createdById String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  project     Project?    @relation(fields: [projectId], references: [id])
+  assigned    User?       @relation("AssignedTo", fields: [assignedId], references: [id])
+  createdBy   User        @relation("CreatedBy", fields: [createdById], references: [id])
+  timeEntries TimeEntry[]
+  activities  Activity[]
+
+  @@map("tasks")
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  description String?
+  hours       Float
+  date        DateTime @default(now())
+  taskId      String?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  task Task? @relation(fields: [taskId], references: [id])
+  user User  @relation(fields: [userId], references: [id])
+
+  @@map("time_entries")
+}
+
+// Proposals & Invoicing Models
+model Proposal {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  amount      Float
+  status      ProposalStatus @default(DRAFT)
+  validUntil  DateTime?
+  clientId    String
+  projectId   String?
+  createdById String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  client    Client    @relation(fields: [clientId], references: [id])
+  project   Project?  @relation(fields: [projectId], references: [id])
+  createdBy User      @relation(fields: [createdById], references: [id])
+  items     ProposalItem[]
+  invoice   Invoice?
+
+  @@map("proposals")
+}
+
+model ProposalItem {
+  id          String  @id @default(cuid())
+  description String
+  quantity    Float
+  unitPrice   Float
+  total       Float
+  proposalId  String
+
+  // Relations
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@map("proposal_items")
+}
+
+model Invoice {
+  id           String        @id @default(cuid())
+  number       String        @unique
+  title        String
+  amount       Float
+  tax          Float         @default(0)
+  total        Float
+  status       InvoiceStatus @default(DRAFT)
+  dueDate      DateTime
+  paidDate     DateTime?
+  clientId     String
+  projectId    String?
+  proposalId   String?       @unique
+  createdById  String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  client    Client    @relation(fields: [clientId], references: [id])
+  project   Project?  @relation(fields: [projectId], references: [id])
+  proposal  Proposal? @relation(fields: [proposalId], references: [id])
+  createdBy User      @relation(fields: [createdById], references: [id])
+  items     InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  description String
+  quantity    Float
+  unitPrice   Float
+  total       Float
+  invoiceId   String
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+// Activity & Notification Models
+model Activity {
+  id          String       @id @default(cuid())
+  type        ActivityType
+  description String
+  metadata    Json?
+  userId      String
+  leadId      String?
+  clientId    String?
+  projectId   String?
+  taskId      String?
+  createdAt   DateTime     @default(now())
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id])
+  lead    Lead?    @relation(fields: [leadId], references: [id])
+  client  Client?  @relation(fields: [clientId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id])
+  task    Task?    @relation(fields: [taskId], references: [id])
+
+  @@map("activities")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  userId    String
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  MANAGER
+  AGENT
+  VIEWER
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  SOCIAL_MEDIA
+  EMAIL_CAMPAIGN
+  COLD_CALL
+  TRADE_SHOW
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+  CHURNED
+}
+
+enum CompanySize {
+  STARTUP
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum ActivityType {
+  LEAD_CREATED
+  LEAD_UPDATED
+  LEAD_CONVERTED
+  CLIENT_CREATED
+  CLIENT_UPDATED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  TASK_CREATED
+  TASK_UPDATED
+  PROPOSAL_CREATED
+  PROPOSAL_SENT
+  INVOICE_CREATED
+  INVOICE_PAID
+  NOTE_ADDED
+  EMAIL_SENT
+  CALL_LOGGED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
