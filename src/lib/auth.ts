@@ -6,6 +6,9 @@ import { prisma } from './prisma'
 import { compare } from 'bcryptjs'
 import { UserRole } from '@prisma/client'
 
+// Check if authentication bypass is enabled
+const isAuthBypassEnabled = process.env.AUTH_BYPASS_ENABLED === 'true'
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
@@ -38,9 +41,57 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // BYPASS MODE: Skip authentication if bypass is enabled
+        if (isAuthBypassEnabled) {
+          console.warn('🚨 AUTH BYPASS MODE ENABLED - DEVELOPMENT ONLY!')
+          
+          // Return a default admin user for bypass mode
+          const bypassUser = await prisma.user.findFirst({
+            where: {
+              role: UserRole.ADMIN,
+              isActive: true,
+            },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              role: true,
+              avatar: true,
+            },
+          })
+
+          if (bypassUser) {
+            return {
+              id: bypassUser.id,
+              email: bypassUser.email,
+              name: bypassUser.name,
+              role: bypassUser.role,
+              avatar: bypassUser.avatar,
+            }
+          }
+
+          // Fallback: create a temporary bypass user
+          return {
+            id: 'bypass-user',
+            email: 'bypass@agency.com',
+            name: 'Bypass User (DEV)',
+            role: UserRole.ADMIN,
+            avatar: null,
+          }
+        }
+
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email,
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            password: true,
+            role: true,
+            avatar: true,
+            isActive: true,
           },
         })
 
@@ -48,12 +99,15 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // For demo purposes, we'll skip password hashing
-        // In production, you should hash passwords and compare them
-        // const isPasswordValid = await compare(credentials.password, user.password)
-        // if (!isPasswordValid) {
-        //   return null
-        // }
+        // Compare the provided password with the hashed password
+        if (!user.password) {
+          return null
+        }
+
+        const isPasswordValid = await compare(credentials.password, user.password)
+        if (!isPasswordValid) {
+          return null
+        }
 
         return {
           id: user.id,

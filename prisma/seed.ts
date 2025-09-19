@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -12,6 +13,9 @@ async function main() {
   await prisma.client.deleteMany({})
   await prisma.lead.deleteMany({})
 
+  // Hash the demo password
+  const hashedPassword = await bcrypt.hash('demo123', 12)
+
   // Create demo users
   const demoUser = await prisma.user.upsert({
     where: { email: 'demo@agency.com' },
@@ -19,7 +23,9 @@ async function main() {
     create: {
       email: 'demo@agency.com',
       name: 'Demo User',
+      password: hashedPassword,
       role: 'ADMIN',
+      isActive: true,
     },
   })
 
@@ -29,7 +35,9 @@ async function main() {
     create: {
       email: 'sales@agency.com',
       name: 'Sales Manager',
+      password: hashedPassword,
       role: 'AGENT',
+      isActive: true,
     },
   })
 

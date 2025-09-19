@@ -133,6 +133,10 @@ export default function SignInPage() {
           </div>
           
           <div className="text-center text-xs text-muted-foreground">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-2">
+              <p className="text-yellow-800 font-semibold">🚨 AUTH BYPASS MODE ACTIVE</p>
+              <p className="text-yellow-700">Any credentials will work - Development Only!</p>
+            </div>
             <p>Demo Credentials:</p>
             <p>Email: demo@agency.com | Password: demo123</p>
             <p>Email: sales@agency.com | Password: demo123</p>
