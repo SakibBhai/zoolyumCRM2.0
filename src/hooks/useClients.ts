@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from './useAuth'
+import { useAuth } from './use-auth'
 
 // Client interface matching the backend schema
 export interface Client {

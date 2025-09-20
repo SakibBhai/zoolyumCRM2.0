@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/use-auth'
 import { useLeads, useLeadStats, type Lead } from '@/hooks/useLeads'
-import { MainLayout } from '@/components/layout/MainLayout'
+import { MainLayout } from '@/components/layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

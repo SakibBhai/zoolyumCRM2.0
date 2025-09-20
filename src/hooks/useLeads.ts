@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Lead {
   id: string
@@ -86,7 +86,6 @@ export const useLeads = (options: UseLeadsOptions = {}) => {
 
       const response = await fetch(`/api/leads?${params.toString()}`, {
         headers: {
-          'Authorization': `Bearer ${user?.token}`,
           'Content-Type': 'application/json'
         }
       })

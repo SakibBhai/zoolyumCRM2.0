@@ -37,9 +37,8 @@ export default withAuth(
         ]
 
         // Check if the current path is public
-        const isPublicRoute = publicRoutes.some(route => 
-          pathname.startsWith(route)
-        )
+        // Special-case the root path ("/") to avoid making every route public with startsWith
+        const isPublicRoute = pathname === '/' || publicRoutes.some(route => pathname.startsWith(route))
 
         if (isPublicRoute) {
           return true

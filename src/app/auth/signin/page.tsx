@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn, getSession } from 'next-auth/react'
+import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -33,12 +33,8 @@ export default function SignInPage() {
       if (result?.error) {
         setError('Invalid credentials. Please try again.')
       } else {
-        // Check if sign in was successful
-        const session = await getSession()
-        if (session) {
-          router.push('/dashboard')
-          router.refresh()
-        }
+        router.push('/dashboard')
+        router.refresh()
       }
     } catch (error) {
       setError('An error occurred. Please try again.')

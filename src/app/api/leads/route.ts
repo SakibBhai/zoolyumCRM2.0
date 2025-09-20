@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -25,9 +25,14 @@ const updateLeadSchema = leadSchema.partial()
 // GET /api/leads - Get all leads
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Check if auth bypass is enabled
+    const isAuthBypassEnabled = process.env.AUTH_BYPASS_ENABLED === 'true'
+    
+    if (!isAuthBypassEnabled) {
+      const session = await getServerSession(authOptions)
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
     }
 
     const { searchParams } = new URL(request.url)

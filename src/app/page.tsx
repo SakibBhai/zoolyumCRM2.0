@@ -1,10 +1,9 @@
-'use client'
-
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Link from 'next/link'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import {
   Users,
   FolderOpen,
@@ -48,26 +47,10 @@ const features = [
   },
 ]
 
-export default function Home() {
-  const { user, loading } = useAuth()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (!loading && user) {
-      router.push('/dashboard')
-    }
-  }, [user, loading, router])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
-  if (user) {
-    return null // Will redirect to dashboard
+export default async function Home() {
+  const session = await getServerSession(authOptions)
+  if (session) {
+    redirect('/dashboard')
   }
 
   return (
@@ -82,17 +65,12 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => router.push('/auth/signin')}
-              >
-                Sign In
-              </Button>
-              <Button
-                onClick={() => router.push('/auth/signup')}
-              >
-                Get Started
-              </Button>
+              <Link href="/auth/signin">
+                <Button variant="outline">Sign In</Button>
+              </Link>
+              <Link href="/auth/signup">
+                <Button>Get Started</Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -111,22 +89,17 @@ export default function Home() {
               Manage leads, projects, teams, and finances all in one place.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                onClick={() => router.push('/auth/signup')}
-                className="text-lg px-8 py-3"
-              >
-                Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => router.push('/auth/signin')}
-                className="text-lg px-8 py-3"
-              >
-                Sign In
-              </Button>
+              <Link href="/auth/signup">
+                <Button size="lg" className="text-lg px-8 py-3">
+                  Start Free Trial
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/auth/signin">
+                <Button size="lg" variant="outline" className="text-lg px-8 py-3">
+                  Sign In
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -176,15 +149,12 @@ export default function Home() {
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
             Join thousands of agencies already using AgencyCRM to streamline their operations.
           </p>
-          <Button
-            size="lg"
-            variant="secondary"
-            onClick={() => router.push('/auth/signup')}
-            className="text-lg px-8 py-3"
-          >
-            Get Started Today
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+          <Link href="/auth/signup">
+            <Button size="lg" variant="secondary" className="text-lg px-8 py-3">
+              Get Started Today
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
         </div>
       </section>
 
