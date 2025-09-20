@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -12,7 +12,7 @@ const createProjectSchema = z.object({
   description: z.string().optional(),
   clientId: z.string().min(1, 'Client ID is required'),
   managerId: z.string().min(1, 'Manager ID is required'),
-  status: z.enum(['PLANNING', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED']).default('PLANNING'),
+  status: z.enum(['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED']).default('PLANNING'),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
   budget: z.number().min(0).optional(),
   startDate: z.string().transform((str) => new Date(str)),
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
     const project = await prisma.project.create({
       data: {
         ...validatedData,
-        createdById: session.user.id,
+        managerId: session.user.id,
       },
       include: {
         client: {
@@ -199,13 +199,7 @@ export async function POST(request: NextRequest) {
             email: true,
           },
         },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+
       },
     })
 

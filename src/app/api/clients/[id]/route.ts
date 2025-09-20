@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -23,7 +23,7 @@ const updateClientSchema = z.object({
 // GET /api/clients/[id] - Get a specific client
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -31,12 +31,12 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     const client = await prisma.client.findUnique({
       where: { id },
       include: {
-        assignedTo: {
+        accountManager: {
           select: {
             id: true,
             name: true,
@@ -96,7 +96,7 @@ export async function GET(
 // PUT /api/clients/[id] - Update a specific client
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -104,7 +104,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const validatedData = updateClientSchema.parse(body)
 
@@ -122,7 +122,7 @@ export async function PUT(
 
     // If email is being updated, check for conflicts
     if (validatedData.email && validatedData.email !== existingClient.email) {
-      const emailConflict = await prisma.client.findUnique({
+      const emailConflict = await prisma.client.findFirst({
         where: { email: validatedData.email },
       })
 
@@ -141,7 +141,7 @@ export async function PUT(
         updatedAt: new Date(),
       },
       include: {
-        assignedTo: {
+        accountManager: {
           select: {
             id: true,
             name: true,
@@ -184,7 +184,7 @@ export async function PUT(
 // DELETE /api/clients/[id] - Delete a specific client
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -192,7 +192,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Check if client exists
     const existingClient = await prisma.client.findUnique({
@@ -200,7 +200,7 @@ export async function DELETE(
       include: {
         projects: {
           where: {
-            status: { in: ['PLANNING', 'IN_PROGRESS'] },
+            status: { in: ['PLANNING', 'ACTIVE'] },
           },
           select: {
             id: true,

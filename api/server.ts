@@ -72,7 +72,6 @@ import {
   deleteTask,
   getTaskStats,
   updateTaskProgress,
-  addTimeEntry,
   addTaskComment,
   getTasksKanban,
   assignTask

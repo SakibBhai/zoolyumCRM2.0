@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -12,10 +12,10 @@ const updateLeadSchema = z.object({
   email: z.string().email('Invalid email format').optional(),
   phone: z.string().optional(),
   company: z.string().optional(),
-  status: z.enum(['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST']).optional(),
-  source: z.enum(['WEBSITE', 'REFERRAL', 'SOCIAL_MEDIA', 'EMAIL', 'PHONE', 'OTHER']).optional(),
+  status: z.enum(['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'NEGOTIATION', 'CONVERTED', 'LOST']).optional(),
+  source: z.enum(['WEBSITE', 'SOCIAL', 'REFERRAL', 'EMAIL', 'COLD_CALL']).optional(),
   value: z.number().min(0).optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   notes: z.string().optional(),
   assignedToId: z.string().optional(),
 })
@@ -23,7 +23,7 @@ const updateLeadSchema = z.object({
 // GET /api/leads/[id] - Get a specific lead
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -31,12 +31,12 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     const lead = await prisma.lead.findUnique({
       where: { id },
       include: {
-        assignedTo: {
+        assigned: {
           select: {
             id: true,
             name: true,
@@ -66,7 +66,7 @@ export async function GET(
 // PUT /api/leads/[id] - Update a specific lead
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -74,7 +74,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const validatedData = updateLeadSchema.parse(body)
 
@@ -92,8 +92,11 @@ export async function PUT(
 
     // If email is being updated, check for conflicts
     if (validatedData.email && validatedData.email !== existingLead.email) {
-      const emailConflict = await prisma.lead.findUnique({
-        where: { email: validatedData.email },
+      const emailConflict = await prisma.lead.findFirst({
+        where: { 
+          email: validatedData.email,
+          id: { not: id }
+        },
       })
 
       if (emailConflict) {
@@ -111,7 +114,7 @@ export async function PUT(
         updatedAt: new Date(),
       },
       include: {
-        assignedTo: {
+        assigned: {
           select: {
             id: true,
             name: true,
@@ -141,7 +144,7 @@ export async function PUT(
 // DELETE /api/leads/[id] - Delete a specific lead
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -149,7 +152,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Check if lead exists
     const existingLead = await prisma.lead.findUnique({

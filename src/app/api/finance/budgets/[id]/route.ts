@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -29,7 +29,7 @@ const updateBudgetSchema = z.object({
 // GET /api/finance/budgets/[id] - Get a specific budget with detailed utilization
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -37,7 +37,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -76,12 +76,12 @@ export async function GET(
             phone: true,
           },
         },
-        createdBy: {
+        creator: {
           select: {
             id: true,
             name: true,
             email: true,
-            avatar: true,
+            avatarUrl: true,
           },
         },
       },
@@ -252,7 +252,7 @@ export async function GET(
 // PUT /api/finance/budgets/[id] - Update a specific budget
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -260,7 +260,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -396,12 +396,12 @@ export async function PUT(
             phone: true,
           },
         },
-        createdBy: {
+        creator: {
           select: {
             id: true,
             name: true,
             email: true,
-            avatar: true,
+            avatarUrl: true,
           },
         },
       },
@@ -427,7 +427,7 @@ export async function PUT(
 // DELETE /api/finance/budgets/[id] - Delete a specific budget
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -435,7 +435,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(

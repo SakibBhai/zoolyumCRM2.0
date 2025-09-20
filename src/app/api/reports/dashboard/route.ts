@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -77,12 +77,13 @@ export async function GET(request: NextRequest) {
       startDate = new Date(validatedParams.dateFrom)
       endDate = new Date(validatedParams.dateTo)
     } else {
-      const days = {
+      const daysMap: Record<string, number> = {
         '7d': 7,
         '30d': 30,
         '90d': 90,
         '1y': 365,
-      }[validatedParams.dateRange] || 30
+      }
+      const days = daysMap[validatedParams.dateRange] || 30
 
       startDate = new Date()
       startDate.setDate(startDate.getDate() - days)
@@ -182,7 +183,6 @@ async function generateOverviewStats(baseFilters: any, startDate: Date, endDate:
     prisma.client.count({
       where: {
         ...baseFilters,
-        status: 'ACTIVE',
       },
     }),
     prisma.project.count({
@@ -396,7 +396,7 @@ async function generateTeamPerformance(baseFilters: any, startDate: Date, endDat
 async function generateClientActivity(baseFilters: any, startDate: Date, endDate: Date) {
   const clientActivity = await prisma.client.findMany({
     where: {
-      status: 'ACTIVE',
+      // Remove status filter as Client model doesn't have status field
     },
     select: {
       id: true,
@@ -454,7 +454,7 @@ async function generateTaskCompletion(baseFilters: any, startDate: Date, endDate
   }))
 
   const totalTasks = tasks.reduce((sum, t) => sum + t._count, 0)
-  const completedTasks = tasks.find(t => t.status === 'COMPLETED')?._count || 0
+  const completedTasks = tasks.find(t => t.status === 'DONE')?._count || 0
   const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
   return {
@@ -591,7 +591,7 @@ async function generateRecentActivities(baseFilters: any) {
 async function generateTopClients(baseFilters: any, startDate: Date, endDate: Date) {
   const topClients = await prisma.client.findMany({
     where: {
-      status: 'ACTIVE',
+      // Remove status filter as Client model doesn't have status field
     },
     select: {
       id: true,
@@ -654,7 +654,7 @@ async function generateUpcomingDeadlines() {
           gte: now,
           lte: nextWeek,
         },
-        status: { not: 'COMPLETED' },
+        status: { not: 'DONE' },
       },
       select: {
         id: true,
@@ -662,7 +662,7 @@ async function generateUpcomingDeadlines() {
         dueDate: true,
         priority: true,
         project: { select: { name: true } },
-        assignedTo: { select: { name: true } },
+        assignee: { select: { name: true } },
       },
       orderBy: { dueDate: 'asc' },
       take: 10,
@@ -692,7 +692,7 @@ async function generateUpcomingDeadlines() {
       type: 'task',
       id: t.id,
       title: t.title,
-      subtitle: `Project: ${t.project?.name} | Assigned to: ${t.assignedTo?.name}`,
+      subtitle: `Project: ${t.project?.name} | Assigned to: ${t.assignee?.name}`,
       dueDate: t.dueDate,
       priority: t.priority,
     })),

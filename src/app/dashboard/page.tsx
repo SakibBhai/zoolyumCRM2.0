@@ -161,19 +161,19 @@ export default async function DashboardPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white rounded-xl p-6 shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white rounded-lg p-5 shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Welcome back, Demo!</h1>
-            <p className="text-gray-600 text-lg">Here&apos;s what&apos;s happening with your business today.</p>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back, Demo!</h1>
+            <p className="text-gray-600">Here&apos;s what&apos;s happening with your business today.</p>
           </div>
-          <div className="flex space-x-3 mt-6 sm:mt-0">
-            <Button variant="outline" className="flex items-center space-x-2 px-4 py-2.5 font-medium transition-all duration-200 hover:bg-gray-50">
+          <div className="flex space-x-3 mt-4 sm:mt-0">
+            <Button variant="outline" className="flex items-center space-x-2 px-4 py-2 font-medium transition-all duration-200 hover:bg-gray-50">
               <Calendar className="h-4 w-4" />
               <span>Schedule Meeting</span>
             </Button>
-            <Button className="flex items-center space-x-2 px-4 py-2.5 font-medium bg-blue-600 hover:bg-blue-700 transition-all duration-200 hover:shadow-md">
+            <Button className="flex items-center space-x-2 px-4 py-2 font-medium bg-blue-600 hover:bg-blue-700 transition-all duration-200 hover:shadow-md">
               <Plus className="h-4 w-4" />
               <span>Add Lead</span>
             </Button>
@@ -181,29 +181,29 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="Total Leads" value="24" change="+12% from last month" trend="up" icon={Users} color="blue" />
           <StatCard title="Active Clients" value="18" change="+3 new this week" trend="up" icon={UserCheck} color="green" />
           <StatCard title="Active Projects" value="12" change="2 completed this week" trend="up" icon={FolderOpen} color="purple" />
           <StatCard title="Monthly Revenue" value="$45,231" change="+8% from last month" trend="up" icon={DollarSign} color="emerald" />
         </div>
 
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Activity */}
-          <div className="lg:col-span-2">
+        {/* Content Grid - Optimized for better space utilization */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+          {/* Recent Activity - Takes more space on larger screens */}
+          <div className="xl:col-span-3">
             <Card className="h-full border-gray-100 transition-all duration-300 hover:shadow-md">
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl font-semibold text-gray-900">Recent Activity</CardTitle>
+                  <CardTitle className="text-lg font-semibold text-gray-900">Recent Activity</CardTitle>
                   <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-all duration-200">
                     View All
                   </Button>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Latest updates from your team and clients</p>
+                <p className="text-sm text-gray-500">Latest updates from your team and clients</p>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {recentActivities.map((activity, index) => {
                     const IconComponent = getActivityIcon(activity.type)
                     const iconColor = getActivityIconColor(activity.type)
@@ -211,14 +211,14 @@ export default async function DashboardPage() {
                     return (
                       <div
                         key={index}
-                        className="flex items-start space-x-4 p-4 rounded-xl bg-gray-50 border border-gray-100 transition-all duration-200 hover:bg-gray-100 hover:shadow-sm group"
+                        className="flex items-start space-x-3 p-3 rounded-lg bg-gray-50 border border-gray-100 transition-all duration-200 hover:bg-gray-100 hover:shadow-sm group"
                       >
-                        <div className={`p-2 rounded-lg ${iconColor} transition-all duration-200 group-hover:scale-110`}>
+                        <div className={`p-2 rounded-lg ${iconColor} transition-all duration-200 group-hover:scale-105`}>
                           <IconComponent className="h-4 w-4 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 mb-1">{activity.title}</p>
-                          <p className="text-sm text-gray-600 mb-2">{activity.description}</p>
+                          <p className="text-sm text-gray-600 mb-1">{activity.description}</p>
                           <p className="text-xs text-gray-500">{activity.time}</p>
                         </div>
                       </div>
@@ -229,53 +229,53 @@ export default async function DashboardPage() {
             </Card>
           </div>
 
-          {/* Quick Actions */}
-          <div>
+          {/* Quick Actions - Compact sidebar */}
+          <div className="xl:col-span-1">
             <Card className="h-full bg-white shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-xl font-semibold text-gray-900">Quick Actions</CardTitle>
-                <p className="text-sm text-gray-500 mt-1">Common tasks and shortcuts</p>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold text-gray-900">Quick Actions</CardTitle>
+                <p className="text-sm text-gray-500">Common tasks and shortcuts</p>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-2">
                   <Button
                     variant="outline"
-                    className="justify-start h-12 px-4 transition-all duration-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 group"
+                    className="justify-start h-10 px-3 transition-all duration-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 group"
                   >
-                    <Plus className="h-4 w-4 mr-3 transition-transform duration-200 group-hover:scale-110" />
-                    <span className="font-medium">Create New Lead</span>
+                    <Plus className="h-4 w-4 mr-2 transition-transform duration-200 group-hover:scale-110" />
+                    <span className="font-medium text-sm">Create New Lead</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="justify-start h-12 px-4 transition-all duration-200 hover:bg-green-50 hover:border-green-200 hover:text-green-700 group"
+                    className="justify-start h-10 px-3 transition-all duration-200 hover:bg-green-50 hover:border-green-200 hover:text-green-700 group"
                   >
-                    <FileText className="h-4 w-4 mr-3 transition-transform duration-200 group-hover:scale-110" />
-                    <span className="font-medium">Start New Project</span>
+                    <FileText className="h-4 w-4 mr-2 transition-transform duration-200 group-hover:scale-110" />
+                    <span className="font-medium text-sm">Start New Project</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="justify-start h-12 px-4 transition-all duration-200 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 group"
+                    className="justify-start h-10 px-3 transition-all duration-200 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 group"
                   >
-                    <CheckCircle className="h-4 w-4 mr-3 transition-transform duration-200 group-hover:scale-110" />
-                    <span className="font-medium">Add Task</span>
+                    <CheckCircle className="h-4 w-4 mr-2 transition-transform duration-200 group-hover:scale-110" />
+                    <span className="font-medium text-sm">Add Task</span>
                   </Button>
                 </div>
 
-                {/* Upcoming Tasks Preview */}
-                <div className="mt-6 pt-6 border-t border-gray-100">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Upcoming Tasks</h4>
+                {/* Upcoming Tasks Preview - More compact */}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Upcoming Tasks</h4>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 transition-all duration-200 hover:bg-gray-100">
-                      <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 transition-all duration-200 hover:bg-gray-100">
+                      <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                        <span className="text-sm font-medium text-gray-900">Follow up with TechCorp</span>
+                        <span className="text-xs font-medium text-gray-900">Follow up with TechCorp</span>
                       </div>
                       <span className="text-xs text-gray-500">Today</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 transition-all duration-200 hover:bg-gray-100">
-                      <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 transition-all duration-200 hover:bg-gray-100">
+                      <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span className="text-sm font-medium text-gray-900">Review project proposal</span>
+                        <span className="text-xs font-medium text-gray-900">Review project proposal</span>
                       </div>
                       <span className="text-xs text-gray-500">Tomorrow</span>
                     </div>

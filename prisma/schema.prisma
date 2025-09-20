@@ -14,41 +14,46 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
-  name          String?
-  password      String?
-  avatar        String?
-  role          UserRole  @default(AGENT)
+  passwordHash  String?   @map("password_hash")
+  name          String
+  role          UserRole  @default(MEMBER)
   department    String?
   phone         String?
-  isActive      Boolean   @default(true)
-  lastLogin     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  avatarUrl     String?   @map("avatar_url")
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLogin     DateTime? @map("last_login")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  accounts      Account[]
-  sessions      Session[]
-  assignedLeads Lead[]    @relation("AssignedAgent")
-  createdLeads  Lead[]    @relation("CreatedBy")
-  clients       Client[]  @relation("AssignedAgent")
-  projects      Project[] @relation("ProjectManager")
-  tasks         Task[]    @relation("AssignedTo")
-  createdTasks  Task[]    @relation("CreatedBy")
-  proposals     Proposal[]
-  invoices      Invoice[]
-  timeEntries   TimeEntry[]
-  activities    Activity[]
-  notifications Notification[]
+  accounts           Account[]
+  sessions           Session[]
+  assignedLeads      Lead[]              @relation("AssignedTo")
+  managedProjects    Project[]           @relation("ProjectManager")
+  assignedTasks      Task[]              @relation("AssignedTo")
+  createdTasks       Task[]              @relation("CreatedBy")
+  managedClients     Client[]            @relation("AccountManager")
+  createdProposals   Proposal[]          @relation("CreatedBy")
+  createdInvoices    Invoice[]           @relation("CreatedBy")
+  timeEntries        TimeEntry[]
+  taskComments       TaskComment[]
+  leadInteractions   LeadInteraction[]
+  projectResources   ProjectResource[]   @relation("CreatedBy")
+  notifications      Notification[]
+  activities         Activity[]          @relation("UserActivities")
+  budgets            Budget[]            @relation("BudgetCreatedBy")
+  expenses           Expense[]           @relation("ExpenseUser")
+  revenues           Revenue[]           @relation("RevenueUser")
 
   @@map("users")
 }
 
 model Account {
   id                String  @id @default(cuid())
-  userId            String
+  userId            String  @map("user_id")
   type              String
   provider          String
-  providerAccountId String
+  providerAccountId String  @map("provider_account_id")
   refresh_token     String?
   access_token      String?
   expires_at        Int?
@@ -65,8 +70,8 @@ model Account {
 
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -79,210 +84,263 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-  @@map("verificationtokens")
+  @@map("verification_tokens")
 }
 
 // Lead Management Models
 model Lead {
-  id          String     @id @default(cuid())
-  firstName   String
-  lastName    String
-  email       String
-  phone       String?
-  company     String?
-  position    String?
-  source      LeadSource @default(WEBSITE)
-  status      LeadStatus @default(NEW)
-  score       Int        @default(0)
-  value       Float      @default(0)
-  notes       String?
-  tags        String?
-  assignedId  String?
-  createdById String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id                  String     @id @default(cuid())
+  name                String
+  email               String
+  company             String?
+  phone               String?
+  source              LeadSource @default(WEBSITE)
+  score               LeadScore  @default(COLD)
+  status              LeadStatus @default(NEW)
+  assignedTo          String?    @map("assigned_to")
+  notes               String?
+  convertedToClientId String?    @unique @map("converted_to_client_id")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
 
   // Relations
-  assigned  User?      @relation("AssignedAgent", fields: [assignedId], references: [id])
-  createdBy User       @relation("CreatedBy", fields: [createdById], references: [id])
-  client    Client?
-  activities Activity[]
+  assigned     User?             @relation("AssignedTo", fields: [assignedTo], references: [id])
+  client       Client?           @relation("ConvertedFromLead")
+  interactions LeadInteraction[]
 
   @@map("leads")
 }
 
-// Client Management Models
-model Client {
-  id           String       @id @default(cuid())
-  leadId       String?      @unique
-  name         String
-  email        String       @unique
-  phone        String?
-  company      String?
-  address      String?
-  website      String?
-  industry     String?
-  size         CompanySize?
-  status       ClientStatus @default(ACTIVE)
-  healthScore  Int          @default(50)
-  totalValue   Float        @default(0)
-  assignedId   String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+model LeadInteraction {
+  id              String          @id @default(cuid())
+  leadId          String          @map("lead_id")
+  userId          String          @map("user_id")
+  interactionType InteractionType @map("interaction_type")
+  subject         String?
+  content         String?
+  scheduledAt     DateTime?       @map("scheduled_at")
+  completedAt     DateTime?       @map("completed_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
 
   // Relations
-  lead       Lead?     @relation(fields: [leadId], references: [id])
-  assigned   User?     @relation("AssignedAgent", fields: [assignedId], references: [id])
-  projects   Project[]
-  proposals  Proposal[]
-  invoices   Invoice[]
-  activities Activity[]
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("lead_interactions")
+}
+
+// Client Management Models
+model Client {
+  id               String  @id @default(cuid())
+  name             String
+  email            String
+  company          String
+  industry         String?
+  phone            String?
+  address          String?
+  website          String?
+  healthScore      Int     @default(5) @map("health_score")
+  leadId           String? @unique @map("lead_id")
+  accountManagerId String? @map("account_manager_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  lead           Lead?           @relation("ConvertedFromLead", fields: [leadId], references: [id])
+  accountManager User?           @relation("AccountManager", fields: [accountManagerId], references: [id])
+  contacts       ClientContact[]
+  projects       Project[]
+  proposals      Proposal[]
+  invoices       Invoice[]
+  budgets        Budget[]
+  expenses       Expense[]
+  revenues       Revenue[]
 
   @@map("clients")
 }
 
-// Project Management Models
-model Project {
-  id          String        @id @default(cuid())
-  name        String
-  description String?
-  status      ProjectStatus @default(PLANNING)
-  priority    Priority      @default(MEDIUM)
-  budget      Float?
-  startDate   DateTime?
-  endDate     DateTime?
-  progress    Int           @default(0)
-  clientId    String
-  managerId   String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+model ClientContact {
+  id        String   @id @default(cuid())
+  clientId  String   @map("client_id")
+  name      String
+  email     String?
+  phone     String?
+  position  String?
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  client     Client     @relation(fields: [clientId], references: [id])
-  manager    User       @relation("ProjectManager", fields: [managerId], references: [id])
-  tasks      Task[]
-  proposals  Proposal[]
-  invoices   Invoice[]
-  activities Activity[]
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_contacts")
+}
+
+// Project Management Models
+model Project {
+  id                   String        @id @default(cuid())
+  name                 String
+  description          String?
+  clientId             String        @map("client_id")
+  managerId            String        @map("manager_id")
+  budget               Float?
+  status               ProjectStatus @default(PLANNING)
+  priority             Priority      @default(MEDIUM)
+  startDate            DateTime?     @map("start_date")
+  endDate              DateTime?     @map("end_date")
+  completionPercentage Int           @default(0) @map("completion_percentage")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  client    Client            @relation(fields: [clientId], references: [id])
+  manager   User              @relation("ProjectManager", fields: [managerId], references: [id])
+  tasks     Task[]
+  resources ProjectResource[]
+  proposals Proposal[]
+  invoices  Invoice[]
+  revenues  Revenue[]
+  budgets   Budget[]
+  expenses  Expense[]
 
   @@map("projects")
 }
 
-// Task Management Models
-model Task {
-  id          String     @id @default(cuid())
-  title       String
+model ProjectResource {
+  id          String       @id @default(cuid())
+  projectId   String       @map("project_id")
+  name        String
+  type        ResourceType
+  url         String?
+  filePath    String?      @map("file_path")
   description String?
-  status      TaskStatus @default(TODO)
-  priority    Priority   @default(MEDIUM)
-  dueDate     DateTime?
-  estimatedHours Float?
-  actualHours    Float?
-  projectId   String?
-  assignedId  String?
-  createdById String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdBy   String       @map("created_by")
+  createdAt   DateTime     @default(now()) @map("created_at")
 
   // Relations
-  project     Project?    @relation(fields: [projectId], references: [id])
-  assigned    User?       @relation("AssignedTo", fields: [assignedId], references: [id])
-  createdBy   User        @relation("CreatedBy", fields: [createdById], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creator User    @relation("CreatedBy", fields: [createdBy], references: [id])
+
+  @@map("project_resources")
+}
+
+// Task Management Models
+model Task {
+  id                   String     @id @default(cuid())
+  title                String
+  description          String?
+  projectId            String     @map("project_id")
+  assigneeId           String?    @map("assignee_id")
+  createdBy            String     @map("created_by")
+  status               TaskStatus @default(TODO)
+  priority             Priority   @default(MEDIUM)
+  dueDate              DateTime?  @map("due_date")
+  estimatedHours       Float?     @map("estimated_hours")
+  actualHours          Float?     @default(0) @map("actual_hours")
+  completionPercentage Int        @default(0) @map("completion_percentage")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  project     Project       @relation(fields: [projectId], references: [id])
+  assignee    User?         @relation("AssignedTo", fields: [assigneeId], references: [id])
+  creator     User          @relation("CreatedBy", fields: [createdBy], references: [id])
+  comments    TaskComment[]
   timeEntries TimeEntry[]
-  activities  Activity[]
 
   @@map("tasks")
 }
 
-model TimeEntry {
-  id          String   @id @default(cuid())
-  description String?
-  hours       Float
-  date        DateTime @default(now())
-  taskId      String?
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String   @map("task_id")
+  userId    String   @map("user_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  task Task? @relation(fields: [taskId], references: [id])
-  user User  @relation(fields: [userId], references: [id])
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("task_comments")
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  taskId      String   @map("task_id")
+  userId      String   @map("user_id")
+  hours       Float
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  task Task @relation(fields: [taskId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("time_entries")
 }
 
-// Proposals & Invoicing Models
+// Financial Management Models
 model Proposal {
-  id          String         @id @default(cuid())
-  title       String
-  description String?
-  amount      Float
-  status      ProposalStatus @default(DRAFT)
-  validUntil  DateTime?
-  clientId    String
-  projectId   String?
-  createdById String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id           String         @id @default(cuid())
+  clientId     String         @map("client_id")
+  projectId    String?        @map("project_id")
+  title        String
+  content      String?
+  totalAmount  Float          @map("total_amount")
+  status       ProposalStatus @default(DRAFT)
+  validUntil   DateTime?      @map("valid_until")
+  createdBy    String         @map("created_by")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
 
   // Relations
-  client    Client    @relation(fields: [clientId], references: [id])
-  project   Project?  @relation(fields: [projectId], references: [id])
-  createdBy User      @relation(fields: [createdById], references: [id])
-  items     ProposalItem[]
-  invoice   Invoice?
+  client  Client   @relation(fields: [clientId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id])
+  creator User     @relation("CreatedBy", fields: [createdBy], references: [id])
+  invoice Invoice?
 
   @@map("proposals")
 }
 
-model ProposalItem {
-  id          String  @id @default(cuid())
-  description String
-  quantity    Float
-  unitPrice   Float
-  total       Float
-  proposalId  String
-
-  // Relations
-  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-
-  @@map("proposal_items")
-}
-
 model Invoice {
-  id           String        @id @default(cuid())
-  number       String        @unique
-  title        String
-  amount       Float
-  tax          Float         @default(0)
-  total        Float
-  status       InvoiceStatus @default(DRAFT)
-  dueDate      DateTime
-  paidDate     DateTime?
-  clientId     String
-  projectId    String?
-  proposalId   String?       @unique
-  createdById  String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique @map("invoice_number")
+  clientId      String        @map("client_id")
+  projectId     String?       @map("project_id")
+  proposalId    String?       @unique @map("proposal_id")
+  amount        Float
+  taxAmount     Float         @default(0) @map("tax_amount")
+  totalAmount   Float         @map("total_amount")
+  status        InvoiceStatus @default(DRAFT)
+  issueDate     DateTime      @map("issue_date")
+  dueDate       DateTime      @map("due_date")
+  paidDate      DateTime?     @map("paid_date")
+  notes         String?
+  createdBy     String        @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
   // Relations
-  client    Client    @relation(fields: [clientId], references: [id])
-  project   Project?  @relation(fields: [projectId], references: [id])
-  proposal  Proposal? @relation(fields: [proposalId], references: [id])
-  createdBy User      @relation(fields: [createdById], references: [id])
-  items     InvoiceItem[]
+  client   Client        @relation(fields: [clientId], references: [id])
+  project  Project?      @relation(fields: [projectId], references: [id])
+  proposal Proposal?     @relation(fields: [proposalId], references: [id])
+  creator  User          @relation("CreatedBy", fields: [createdBy], references: [id])
+  items    InvoiceItem[]
+  payments Payment[]
+  revenues Revenue[]
 
   @@map("invoices")
 }
 
 model InvoiceItem {
   id          String  @id @default(cuid())
+  invoiceId   String  @map("invoice_id")
   description String
   quantity    Float
-  unitPrice   Float
-  total       Float
-  invoiceId   String
+  unitPrice   Float   @map("unit_price")
+  totalPrice  Float   @map("total_price")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -290,37 +348,129 @@ model InvoiceItem {
   @@map("invoice_items")
 }
 
-// Activity & Notification Models
-model Activity {
-  id          String       @id @default(cuid())
-  type        ActivityType
-  description String
-  metadata    Json?
-  userId      String
-  leadId      String?
-  clientId    String?
-  projectId   String?
-  taskId      String?
-  createdAt   DateTime     @default(now())
+model Payment {
+  id            String   @id @default(cuid())
+  invoiceId     String   @map("invoice_id")
+  amount        Float
+  paymentMethod String?  @map("payment_method")
+  transactionId String?  @map("transaction_id")
+  paymentDate   DateTime @map("payment_date")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
 
   // Relations
-  user    User     @relation(fields: [userId], references: [id])
-  lead    Lead?    @relation(fields: [leadId], references: [id])
-  client  Client?  @relation(fields: [clientId], references: [id])
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@map("payments")
+}
+
+// Financial Management Models (Extended)
+model Budget {
+  id              String       @id @default(cuid())
+  name            String
+  description     String?
+  totalAmount     Float        @map("total_amount")
+  period          BudgetPeriod @default(MONTHLY)
+  startDate       DateTime     @map("start_date")
+  endDate         DateTime     @map("end_date")
+  projectId       String?      @map("project_id")
+  clientId        String?      @map("client_id")
+  categories      Json?
+  alertThreshold  Float        @default(80) @map("alert_threshold")
+  isActive        Boolean      @default(true) @map("is_active")
+  notes           String?
+  createdBy       String       @map("created_by")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  project   Project? @relation(fields: [projectId], references: [id])
+  client    Client?  @relation(fields: [clientId], references: [id])
+  creator   User     @relation("BudgetCreatedBy", fields: [createdBy], references: [id])
+  expenses  Expense[]
+
+  @@map("budgets")
+}
+
+model Expense {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  amount      Float
+  taxAmount   Float         @default(0) @map("tax_amount")
+  category    ExpenseCategory
+  date        DateTime
+  status      ExpenseStatus @default(PENDING)
+  projectId   String?       @map("project_id")
+  clientId    String?       @map("client_id")
+  budgetId    String?       @map("budget_id")
+  receiptUrl  String?       @map("receipt_url")
+  notes       String?
+  userId      String        @map("user_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
   project Project? @relation(fields: [projectId], references: [id])
-  task    Task?    @relation(fields: [taskId], references: [id])
+  client  Client?  @relation(fields: [clientId], references: [id])
+  budget  Budget?  @relation(fields: [budgetId], references: [id])
+  user    User     @relation("ExpenseUser", fields: [userId], references: [id])
+
+  @@map("expenses")
+}
+
+model Revenue {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  amount      Float
+  taxAmount   Float         @default(0) @map("tax_amount")
+  category    RevenueCategory
+  date        DateTime
+  status      RevenueStatus @default(PENDING)
+  projectId   String?       @map("project_id")
+  clientId    String?       @map("client_id")
+  invoiceId   String?       @map("invoice_id")
+  notes       String?
+  userId      String        @map("user_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  project Project? @relation(fields: [projectId], references: [id])
+  client  Client?  @relation(fields: [clientId], references: [id])
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+  user    User     @relation("RevenueUser", fields: [userId], references: [id])
+
+  @@map("revenues")
+}
+
+// System Models
+model Activity {
+  id          String       @id @default(cuid())
+  userId      String       @map("user_id")
+  type        String
+  description String
+  entityType  String?      @map("entity_type")
+  entityId    String?      @map("entity_id")
+  metadata    Json?
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation("UserActivities", fields: [userId], references: [id])
 
   @@map("activities")
 }
 
 model Notification {
   id        String           @id @default(cuid())
+  userId    String           @map("user_id")
   title     String
   message   String
   type      NotificationType @default(INFO)
-  isRead    Boolean          @default(false)
-  userId    String
-  createdAt DateTime         @default(now())
+  isRead    Boolean          @default(false) @map("is_read")
+  actionUrl String?          @map("action_url")
+  createdAt DateTime         @default(now()) @map("created_at")
 
   // Relations
   user User @relation(fields: [userId], references: [id])
@@ -328,22 +478,37 @@ model Notification {
   @@map("notifications")
 }
 
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String?
+  description String?
+  updatedBy   String?  @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
 // Enums
 enum UserRole {
   ADMIN
   MANAGER
-  AGENT
-  VIEWER
+  MEMBER
+  CLIENT
 }
 
 enum LeadSource {
   WEBSITE
+  SOCIAL
   REFERRAL
-  SOCIAL_MEDIA
-  EMAIL_CAMPAIGN
+  EMAIL
   COLD_CALL
-  TRADE_SHOW
-  OTHER
+}
+
+enum LeadScore {
+  HOT
+  WARM
+  COLD
 }
 
 enum LeadStatus {
@@ -352,28 +517,20 @@ enum LeadStatus {
   QUALIFIED
   PROPOSAL_SENT
   NEGOTIATION
-  CLOSED_WON
-  CLOSED_LOST
+  CONVERTED
+  LOST
 }
 
-enum ClientStatus {
-  ACTIVE
-  INACTIVE
-  PROSPECT
-  CHURNED
-}
-
-enum CompanySize {
-  STARTUP
-  SMALL
-  MEDIUM
-  LARGE
-  ENTERPRISE
+enum InteractionType {
+  CALL
+  EMAIL
+  MEETING
+  NOTE
 }
 
 enum ProjectStatus {
   PLANNING
-  IN_PROGRESS
+  ACTIVE
   ON_HOLD
   COMPLETED
   CANCELLED
@@ -383,7 +540,7 @@ enum TaskStatus {
   TODO
   IN_PROGRESS
   IN_REVIEW
-  COMPLETED
+  DONE
   CANCELLED
 }
 
@@ -394,9 +551,17 @@ enum Priority {
   URGENT
 }
 
+enum ResourceType {
+  LINK
+  FILE
+  DOCUMENT
+  RESEARCH
+}
+
 enum ProposalStatus {
   DRAFT
   SENT
+  VIEWED
   ACCEPTED
   REJECTED
   EXPIRED
@@ -410,28 +575,55 @@ enum InvoiceStatus {
   CANCELLED
 }
 
-enum ActivityType {
-  LEAD_CREATED
-  LEAD_UPDATED
-  LEAD_CONVERTED
-  CLIENT_CREATED
-  CLIENT_UPDATED
-  PROJECT_CREATED
-  PROJECT_UPDATED
-  TASK_CREATED
-  TASK_UPDATED
-  PROPOSAL_CREATED
-  PROPOSAL_SENT
-  INVOICE_CREATED
-  INVOICE_PAID
-  NOTE_ADDED
-  EMAIL_SENT
-  CALL_LOGGED
-}
-
 enum NotificationType {
   INFO
   SUCCESS
   WARNING
   ERROR
+}
+
+enum BudgetPeriod {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  CUSTOM
+}
+
+enum ExpenseCategory {
+  OFFICE_SUPPLIES
+  TRAVEL
+  MEALS
+  SOFTWARE
+  HARDWARE
+  MARKETING
+  UTILITIES
+  RENT
+  INSURANCE
+  PROFESSIONAL_SERVICES
+  OTHER
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REIMBURSED
+}
+
+enum RevenueCategory {
+  PROJECT_PAYMENT
+  CONSULTING
+  SUBSCRIPTION
+  LICENSE
+  MAINTENANCE
+  SUPPORT
+  TRAINING
+  OTHER
+}
+
+enum RevenueStatus {
+  PENDING
+  RECEIVED
+  CANCELLED
+  REFUNDED
 }

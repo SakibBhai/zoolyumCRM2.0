@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       prisma.client.findMany({
         where,
         include: {
-          assignedTo: {
+          accountManager: {
             select: {
               id: true,
               name: true,
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     const validatedData = clientSchema.parse(body)
 
     // Check if client with email already exists
-    const existingClient = await prisma.client.findUnique({
+    const existingClient = await prisma.client.findFirst({
       where: { email: validatedData.email },
     })
 
@@ -131,9 +131,13 @@ export async function POST(request: NextRequest) {
     }
 
     const client = await prisma.client.create({
-      data: validatedData,
+      data: {
+        ...validatedData,
+        company: validatedData.company || 'Unknown Company',
+        accountManagerId: validatedData.assignedToId,
+      },
       include: {
-        assignedTo: {
+        accountManager: {
           select: {
             id: true,
             name: true,
@@ -249,7 +253,7 @@ export async function DELETE(request: NextRequest) {
         id: { in: ids },
         projects: {
           some: {
-            status: { in: ['PLANNING', 'IN_PROGRESS'] },
+            status: { in: ['PLANNING', 'ACTIVE'] },
           },
         },
       },

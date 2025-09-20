@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
-import { useClients, useClientStats, Client } from '@/hooks/useClients'
+import { useClients } from '@/hooks/useClients'
+import type { Client } from '@/shared/types'
 import { MainLayout } from '@/components/layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -33,22 +34,13 @@ import {
   Loader2
 } from 'lucide-react'
 
-interface Client {
-  id: string
-  name: string
-  company: string
-  email: string
-  phone: string
-  status: 'active' | 'inactive' | 'at-risk' | 'churned'
-  healthScore: number
-  totalValue: number
-  activeProjects: number
-  lastContact: string
-  accountManager: string
-  joinDate: string
-  industry: string
-  size: 'small' | 'medium' | 'large' | 'enterprise'
-  satisfaction: number
+interface ClientWithProjects extends Client {
+  activeProjects?: number
+  lastContact?: string
+  accountManager?: string
+  joinDate?: string
+  size?: 'small' | 'medium' | 'large' | 'enterprise'
+  satisfaction?: number
   renewalDate?: string
 }
 

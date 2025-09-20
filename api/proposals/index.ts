@@ -1,6 +1,98 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 
+// Proposal interface
+interface Proposal {
+  id: string
+  title: string
+  description?: string
+  clientId: string
+  clientName?: string
+  projectType?: string
+  status: string
+  value?: number
+  validUntil: string
+  createdBy?: string
+  scope?: string[]
+  timeline?: {
+    startDate: string
+    endDate: string
+    milestones?: {
+      name: string
+      date: string
+      deliverables: string[]
+    }[]
+  }
+  budget?: {
+    amount: number
+    currency: string
+    breakdown?: {
+      item: string
+      quantity: number
+      rate: number
+      total: number
+    }[]
+  }
+  items?: {
+    name: string
+    description?: string
+    quantity: number
+    unitPrice: number
+    total: number
+  }[]
+  terms: {
+    paymentTerms: string
+    deliveryTerms: string
+    revisions: number
+    warranty?: string
+    cancellation?: string
+  }
+  notes?: string
+  attachments?: string[]
+  sentAt?: string
+  viewedAt?: string
+  acceptedAt?: string
+  createdAt: string
+  updatedAt: string
+  customFields?: Record<string, any>
+}
+
+
+// Invoice interface
+interface Invoice {
+  id: string
+  clientId: string
+  projectId?: string
+  proposalId?: string
+  invoiceNumber: string
+  issueDate: string
+  dueDate: string
+  items: {
+    description: string
+    quantity: number
+    rate: number
+    total: number
+  }[]
+  subtotal: number
+  taxRate: number
+  taxAmount: number
+  discountRate?: number
+  discountAmount?: number
+  total: number
+  currency: string
+  status: 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled'
+  paymentTerms: string
+  notes?: string
+  attachments?: string[]
+  sentAt?: string
+  viewedAt?: string
+  paidAt?: string
+  paymentMethod?: string
+  createdAt: string
+  updatedAt: string
+  customFields?: Record<string, any>
+}
+
 // Proposal validation schema
 const proposalSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -74,7 +166,120 @@ const invoiceSchema = z.object({
 const updateInvoiceSchema = invoiceSchema.partial()
 
 // Mock data
-let proposals = [
+let invoices: Invoice[] = [
+  {
+    id: 'inv-001',
+    clientId: 'acme-corp',
+    projectId: 'proj-001',
+    proposalId: 'prop-001',
+    invoiceNumber: 'INV-2024-001',
+    issueDate: '2024-01-20',
+    dueDate: '2024-02-19',
+    items: [
+      {
+        description: 'E-commerce Website Development - Upfront Payment (50%)',
+        quantity: 1,
+        rate: 22500,
+        total: 22500
+      }
+    ],
+    subtotal: 22500,
+    taxRate: 10,
+    taxAmount: 2250,
+    discountRate: 0,
+    discountAmount: 0,
+    total: 24750,
+    currency: 'USD',
+    status: 'sent',
+    paymentTerms: 'Net 30 days',
+    notes: 'Upfront payment for e-commerce website development project',
+    attachments: ['invoice-001.pdf'],
+    createdAt: '2024-01-20T15:00:00Z',
+    updatedAt: '2024-01-20T15:00:00Z',
+    sentAt: '2024-01-20T15:00:00Z',
+    customFields: {
+      poNumber: 'PO-2024-001',
+      department: 'IT',
+      approvedBy: 'John Smith'
+    }
+  },
+  {
+    id: 'inv-002',
+    clientId: 'tech-startup',
+    projectId: 'proj-002',
+    proposalId: 'prop-002',
+    invoiceNumber: 'INV-2024-002',
+    issueDate: '2024-01-25',
+    dueDate: '2024-02-24',
+    items: [
+      {
+        description: 'Mobile App Development - Milestone 1',
+        quantity: 1,
+        rate: 22500,
+        total: 22500
+      }
+    ],
+    subtotal: 22500,
+    taxRate: 8,
+    taxAmount: 1800,
+    discountRate: 5,
+    discountAmount: 1125,
+    total: 23175,
+    currency: 'USD',
+    status: 'paid',
+    paymentTerms: 'Net 30 days',
+    notes: 'Initial payment for mobile app development project',
+    attachments: ['invoice-002.pdf'],
+    createdAt: '2024-01-25T14:30:00Z',
+    updatedAt: '2024-02-05T09:15:00Z',
+    sentAt: '2024-01-25T14:30:00Z',
+    paidAt: '2024-02-05T09:15:00Z',
+    paymentMethod: 'Bank Transfer',
+    customFields: {
+      poNumber: 'PO-2024-002',
+      department: 'Product',
+      approvedBy: 'Jane Doe'
+    }
+  },
+  {
+    id: 'inv-003',
+    clientId: 'local-business',
+    projectId: 'proj-003',
+    proposalId: 'prop-003',
+    invoiceNumber: 'INV-2024-003',
+    issueDate: '2024-01-28',
+    dueDate: '2024-02-27',
+    items: [
+      {
+        description: 'Brand Identity & Website Redesign - Upfront Payment (50%)',
+        quantity: 1,
+        rate: 12500,
+        total: 12500
+      }
+    ],
+    subtotal: 12500,
+    taxRate: 8.5,
+    taxAmount: 1062.50,
+    discountRate: 0,
+    discountAmount: 0,
+    total: 13562.50,
+    currency: 'USD',
+    status: 'viewed',
+    paymentTerms: 'Net 30 days',
+    notes: 'Upfront payment for brand identity and website redesign project',
+    attachments: ['invoice-003.pdf'],
+    createdAt: '2024-01-28T16:45:00Z',
+    updatedAt: '2024-02-02T11:30:00Z',
+    sentAt: '2024-01-28T16:45:00Z',
+    viewedAt: '2024-02-02T11:30:00Z',
+    customFields: {
+      department: 'Marketing',
+      approvedBy: 'Bob Wilson'
+    }
+  }
+]
+
+let proposals: Proposal[] = [
   {
     id: 'prop-001',
     title: 'E-commerce Website Development',
@@ -297,117 +502,7 @@ let proposals = [
   }
 ]
 
-let invoices = [
-  {
-    id: 'inv-001',
-    clientId: 'acme-corp',
-    projectId: 'proj-001',
-    proposalId: 'prop-001',
-    invoiceNumber: 'INV-2024-001',
-    issueDate: '2024-01-30',
-    dueDate: '2024-02-29',
-    items: [
-      {
-        description: 'E-commerce Website Development - First Payment (50%)',
-        quantity: 1,
-        rate: 22500,
-        total: 22500
-      }
-    ],
-    subtotal: 22500,
-    taxRate: 8.5,
-    taxAmount: 1912.50,
-    discountRate: 0,
-    discountAmount: 0,
-    total: 24412.50,
-    currency: 'USD',
-    status: 'sent',
-    paymentTerms: 'Net 30 days',
-    notes: 'First milestone payment for e-commerce website project',
-    attachments: ['invoice-001.pdf'],
-    createdAt: '2024-01-30T10:00:00Z',
-    updatedAt: '2024-01-30T10:00:00Z',
-    sentAt: '2024-01-30T10:00:00Z',
-    customFields: {
-      poNumber: 'PO-2024-001',
-      department: 'IT',
-      approvedBy: 'John Smith'
-    }
-  },
-  {
-    id: 'inv-002',
-    clientId: 'tech-startup',
-    projectId: 'proj-002',
-    invoiceNumber: 'INV-2024-002',
-    issueDate: '2024-01-25',
-    dueDate: '2024-02-24',
-    items: [
-      {
-        description: 'Mobile App Development - Initial Payment (40%)',
-        quantity: 1,
-        rate: 26000,
-        total: 26000
-      }
-    ],
-    subtotal: 26000,
-    taxRate: 8.5,
-    taxAmount: 2210,
-    discountRate: 5,
-    discountAmount: 1300,
-    total: 26910,
-    currency: 'USD',
-    status: 'paid',
-    paymentTerms: 'Net 30 days',
-    notes: 'Initial payment for mobile app development project',
-    attachments: ['invoice-002.pdf'],
-    createdAt: '2024-01-25T14:30:00Z',
-    updatedAt: '2024-02-05T09:15:00Z',
-    sentAt: '2024-01-25T14:30:00Z',
-    paidAt: '2024-02-05T09:15:00Z',
-    paymentMethod: 'Bank Transfer',
-    customFields: {
-      poNumber: 'PO-2024-002',
-      department: 'Product',
-      approvedBy: 'Jane Doe'
-    }
-  },
-  {
-    id: 'inv-003',
-    clientId: 'local-business',
-    projectId: 'proj-003',
-    proposalId: 'prop-003',
-    invoiceNumber: 'INV-2024-003',
-    issueDate: '2024-01-28',
-    dueDate: '2024-02-27',
-    items: [
-      {
-        description: 'Brand Identity & Website Redesign - Upfront Payment (50%)',
-        quantity: 1,
-        rate: 12500,
-        total: 12500
-      }
-    ],
-    subtotal: 12500,
-    taxRate: 8.5,
-    taxAmount: 1062.50,
-    discountRate: 0,
-    discountAmount: 0,
-    total: 13562.50,
-    currency: 'USD',
-    status: 'viewed',
-    paymentTerms: 'Net 30 days',
-    notes: 'Upfront payment for brand identity and website redesign project',
-    attachments: ['invoice-003.pdf'],
-    createdAt: '2024-01-28T16:45:00Z',
-    updatedAt: '2024-02-02T11:30:00Z',
-    sentAt: '2024-01-28T16:45:00Z',
-    viewedAt: '2024-02-02T11:30:00Z',
-    customFields: {
-      department: 'Marketing',
-      approvedBy: 'Bob Wilson'
-    }
-  }
-]
+// Duplicate invoices array removed - using the typed version above
 
 // GET /api/proposals - Get all proposals with filtering and pagination
 export const getProposals = (req: Request, res: Response) => {
@@ -439,7 +534,7 @@ export const getProposals = (req: Request, res: Response) => {
       const searchTerm = (search as string).toLowerCase()
       filteredProposals = filteredProposals.filter(proposal => 
         proposal.title.toLowerCase().includes(searchTerm) ||
-        proposal.description.toLowerCase().includes(searchTerm)
+        (proposal.description && proposal.description.toLowerCase().includes(searchTerm))
       )
     }
 
@@ -448,10 +543,24 @@ export const getProposals = (req: Request, res: Response) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
       
+      if (!aValue || !bValue) return 0
+
+      
+      
+
+      
       if (sortOrder === 'asc') {
+
+      
         return aValue > bValue ? 1 : -1
+
+      
       } else {
+
+      
         return aValue < bValue ? 1 : -1
+
+      
       }
     })
 
@@ -594,10 +703,24 @@ export const getInvoices = (req: Request, res: Response) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
       
+      if (!aValue || !bValue) return 0
+
+      
+      
+
+      
       if (sortOrder === 'asc') {
+
+      
         return aValue > bValue ? 1 : -1
+
+      
       } else {
+
+      
         return aValue < bValue ? 1 : -1
+
+      
       }
     })
 
@@ -718,10 +841,10 @@ export const getProposalStats = (req: Request, res: Response) => {
         rejected: proposals.filter(p => p.status === 'rejected').length,
         expired: proposals.filter(p => p.status === 'expired').length
       },
-      totalValue: proposals.reduce((sum, p) => sum + p.budget.amount, 0),
-      averageValue: proposals.length > 0 ? proposals.reduce((sum, p) => sum + p.budget.amount, 0) / proposals.length : 0,
+      totalValue: proposals.reduce((sum, p) => sum + (p.budget?.amount || 0), 0),
+      averageValue: proposals.length > 0 ? proposals.reduce((sum, p) => sum + (p.budget?.amount || 0), 0) / proposals.length : 0,
       conversionRate: proposals.length > 0 ? (proposals.filter(p => p.status === 'accepted').length / proposals.length) * 100 : 0,
-      pendingValue: proposals.filter(p => ['sent', 'viewed'].includes(p.status)).reduce((sum, p) => sum + p.budget.amount, 0)
+      pendingValue: proposals.filter(p => ['sent', 'viewed'].includes(p.status)).reduce((sum, p) => sum + (p.budget?.amount || 0), 0)
     }
     
     res.json(stats)
@@ -818,7 +941,9 @@ export const markInvoicePaid = (req: Request, res: Response) => {
     invoices[invoiceIndex].status = 'paid'
     invoices[invoiceIndex].paidAt = paymentDate || new Date().toISOString()
     invoices[invoiceIndex].paymentMethod = paymentMethod
-    invoices[invoiceIndex].paymentNotes = notes
+    if (notes) {
+      invoices[invoiceIndex].notes = notes
+    }
     invoices[invoiceIndex].updatedAt = new Date().toISOString()
     
     res.json({

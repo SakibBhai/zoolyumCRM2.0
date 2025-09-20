@@ -1,6 +1,77 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 
+// Report interface
+interface Report {
+  id: string
+  name: string
+  description?: string
+  type: 'sales' | 'financial' | 'project' | 'team' | 'client' | 'custom'
+  category: 'performance' | 'analytics' | 'summary' | 'detailed' | 'comparison'
+  parameters: {
+    dateRange: {
+      startDate: string
+      endDate: string
+    }
+    filters?: Record<string, any>
+    groupBy?: string[]
+    metrics?: string[]
+    format: 'table' | 'chart' | 'graph' | 'summary'
+  }
+  schedule?: {
+    enabled: boolean
+    frequency?: 'daily' | 'weekly' | 'monthly' | 'quarterly'
+    recipients?: string[]
+    nextRun?: string
+  }
+  visibility: 'private' | 'team' | 'organization'
+  ownerId: string
+  tags?: string[]
+  status: 'draft' | 'active' | 'archived'
+  lastGenerated: string | null
+  generationCount: number
+  createdAt: string
+  updatedAt: string
+  customFields?: Record<string, any>
+}
+
+// Dashboard interface
+interface Dashboard {
+  id: string
+  name: string
+  description?: string
+  layout: Array<{
+    id: string
+    type: 'chart' | 'table' | 'metric' | 'text' | 'image'
+    position: {
+      x: number
+      y: number
+      width: number
+      height: number
+    }
+    config: Record<string, any>
+    dataSource?: string
+  }>
+  filters?: Array<{
+    id: string
+    name: string
+    type: 'date' | 'select' | 'multiselect' | 'text' | 'number'
+    options?: any[]
+    defaultValue?: any
+  }>
+  refreshInterval?: number
+  isPublic: boolean
+  ownerId: string
+  sharedWith?: string[]
+  tags?: string[]
+  customFields?: Record<string, any>
+  status: string
+  lastViewed: string | null
+  viewCount: number
+  createdAt: string
+  updatedAt: string
+}
+
 // Report validation schema
 const reportSchema = z.object({
   name: z.string().min(1, 'Report name is required'),
@@ -79,7 +150,7 @@ const analyticsQuerySchema = z.object({
 })
 
 // Mock data
-let reports = [
+let reports: Report[] = [
   {
     id: 'report-001',
     name: 'Monthly Sales Performance',
@@ -271,7 +342,7 @@ let reports = [
   }
 ]
 
-let dashboards = [
+let dashboards: Dashboard[] = [
   {
     id: 'dashboard-001',
     name: 'Executive Overview',
@@ -620,6 +691,8 @@ export const getReports = (req: Request, res: Response) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
       
+      if (!aValue || !bValue) return 0
+      
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1
       } else {
@@ -669,16 +742,28 @@ export const createReport = (req: Request, res: Response) => {
   try {
     const validatedData = reportSchema.parse(req.body)
     
-    const newReport = {
+    const newReport: Report = {
       id: `report-${Date.now()}`,
-      ...validatedData,
+      name: validatedData.name,
+      description: validatedData.description,
+      type: validatedData.type,
+      category: validatedData.category,
+      parameters: {
+        ...validatedData.parameters,
+        filters: validatedData.parameters.filters,
+        groupBy: validatedData.parameters.groupBy,
+        metrics: validatedData.parameters.metrics
+      },
+      schedule: validatedData.schedule,
+      visibility: validatedData.visibility,
+      ownerId: validatedData.ownerId,
+      tags: validatedData.tags,
       status: 'draft',
       lastGenerated: null,
       generationCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      customFields: validatedData.customFields || {},
-      tags: validatedData.tags || []
+      customFields: validatedData.customFields
     }
     
     reports.push(newReport)
@@ -809,6 +894,8 @@ export const getDashboards = (req: Request, res: Response) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
       
+      if (!aValue || !bValue) return 0
+      
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1
       } else {
@@ -863,17 +950,23 @@ export const createDashboard = (req: Request, res: Response) => {
   try {
     const validatedData = dashboardSchema.parse(req.body)
     
-    const newDashboard = {
+    const newDashboard: Dashboard = {
       id: `dashboard-${Date.now()}`,
-      ...validatedData,
+      name: validatedData.name,
+      description: validatedData.description,
+      layout: validatedData.layout,
+      filters: validatedData.filters,
+      refreshInterval: validatedData.refreshInterval,
+      isPublic: validatedData.isPublic,
+      ownerId: validatedData.ownerId,
+      sharedWith: validatedData.sharedWith,
+      tags: validatedData.tags,
+      customFields: validatedData.customFields,
       status: 'active',
       lastViewed: null,
       viewCount: 0,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      customFields: validatedData.customFields || {},
-      tags: validatedData.tags || [],
-      sharedWith: validatedData.sharedWith || []
+      updatedAt: new Date().toISOString()
     }
     
     dashboards.push(newDashboard)
@@ -1010,7 +1103,7 @@ function generateMockReportData(type: string, parameters: any) {
       dateRange: parameters.dateRange,
       generatedAt: new Date().toISOString()
     },
-    data: []
+    data: [] as any[]
   }
   
   switch (type) {

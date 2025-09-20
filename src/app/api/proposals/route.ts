@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -18,14 +18,14 @@ const createProposalSchema = z.object({
     description: z.string().min(1, 'Item description is required'),
     quantity: z.number().min(0, 'Quantity must be positive'),
     unitPrice: z.number().min(0, 'Unit price must be positive'),
-    total: z.number().min(0, 'Total must be positive'),
+    totalAmount: z.number().min(0, 'Total must be positive'),
   })).min(1, 'At least one item is required'),
   subtotal: z.number().min(0, 'Subtotal must be positive'),
   taxRate: z.number().min(0).max(1, 'Tax rate must be between 0 and 1').default(0),
   taxAmount: z.number().min(0, 'Tax amount must be positive').default(0),
   discountRate: z.number().min(0).max(1, 'Discount rate must be between 0 and 1').default(0),
   discountAmount: z.number().min(0, 'Discount amount must be positive').default(0),
-  total: z.number().min(0, 'Total must be positive'),
+  totalAmount: z.number().min(0, 'Total must be positive'),
   notes: z.string().optional(),
   terms: z.string().optional(),
 })
@@ -40,14 +40,14 @@ const updateProposalSchema = z.object({
     description: z.string().min(1, 'Item description is required'),
     quantity: z.number().min(0, 'Quantity must be positive'),
     unitPrice: z.number().min(0, 'Unit price must be positive'),
-    total: z.number().min(0, 'Total must be positive'),
+    totalAmount: z.number().min(0, 'Total must be positive'),
   })).optional(),
   subtotal: z.number().min(0, 'Subtotal must be positive').optional(),
   taxRate: z.number().min(0).max(1, 'Tax rate must be between 0 and 1').optional(),
   taxAmount: z.number().min(0, 'Tax amount must be positive').optional(),
   discountRate: z.number().min(0).max(1, 'Discount rate must be between 0 and 1').optional(),
   discountAmount: z.number().min(0, 'Discount amount must be positive').optional(),
-  total: z.number().min(0, 'Total must be positive').optional(),
+  totalAmount: z.number().min(0, 'Total must be positive').optional(),
   notes: z.string().optional(),
   terms: z.string().optional(),
 })
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
               status: true,
             },
           },
-          createdBy: {
+          creator: {
             select: {
               id: true,
               name: true,
@@ -218,9 +218,9 @@ export async function POST(request: NextRequest) {
     const proposal = await prisma.proposal.create({
       data: {
         ...validatedData,
-        proposalNumber,
+
         validUntil: validatedData.validUntil ? new Date(validatedData.validUntil) : undefined,
-        createdById: session.user.id,
+        createdBy: session.user.id,
       },
       include: {
         client: {
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
             status: true,
           },
         },
-        createdBy: {
+        creator: {
           select: {
             id: true,
             name: true,
@@ -294,7 +294,7 @@ export async function PUT(request: NextRequest) {
       select: {
         id: true,
         status: true,
-        createdById: true,
+        createdBy: true,
       },
     })
 
@@ -382,7 +382,7 @@ export async function DELETE(request: NextRequest) {
       select: {
         id: true,
         status: true,
-        proposalNumber: true,
+
         title: true,
       },
     })
@@ -405,7 +405,6 @@ export async function DELETE(request: NextRequest) {
           error: 'Cannot delete accepted proposals',
           acceptedProposals: acceptedProposals.map(p => ({
             id: p.id,
-            proposalNumber: p.proposalNumber,
             title: p.title,
           })),
         },

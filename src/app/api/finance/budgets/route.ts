@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -148,11 +148,12 @@ export async function GET(request: NextRequest) {
               company: true,
             },
           },
-          createdBy: {
+          creator: {
             select: {
               id: true,
               name: true,
               email: true,
+              avatarUrl: true,
             },
           },
         },
@@ -355,7 +356,7 @@ export async function POST(request: NextRequest) {
         startDate: new Date(validatedData.startDate),
         endDate: new Date(validatedData.endDate),
         categories: validatedData.categories || [],
-        createdById: session.user.id,
+        createdBy: session.user.id,
       },
       include: {
         project: {
@@ -379,7 +380,7 @@ export async function POST(request: NextRequest) {
             company: true,
           },
         },
-        createdBy: {
+        creator: {
           select: {
             id: true,
             name: true,

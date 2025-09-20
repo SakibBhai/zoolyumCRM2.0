@@ -1,6 +1,30 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 
+// Lead interface
+interface Lead {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  company?: string
+  position?: string
+  source: string
+  status: string
+  priority: string
+  value?: number
+  notes?: string
+  tags?: string[]
+  assignedTo?: string
+  expectedCloseDate?: string
+  lastContactDate?: string | null
+  nextFollowUpDate?: string
+  createdAt: string
+  updatedAt: string
+  customFields?: Record<string, any>
+}
+
 // Lead validation schema
 const leadSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -25,7 +49,7 @@ const leadSchema = z.object({
 const updateLeadSchema = leadSchema.partial()
 
 // Mock data
-let leads = [
+let leads: Lead[] = [
   {
     id: '1',
     firstName: 'John',
@@ -151,10 +175,24 @@ export const getLeads = (req: Request, res: Response) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
       
+      if (!aValue || !bValue) return 0
+
+      
+      
+
+      
       if (sortOrder === 'asc') {
+
+      
         return aValue > bValue ? 1 : -1
+
+      
       } else {
+
+      
         return aValue < bValue ? 1 : -1
+
+      
       }
     })
 

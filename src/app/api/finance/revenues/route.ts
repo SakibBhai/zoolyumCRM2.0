@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -8,35 +8,35 @@ const prisma = new PrismaClient()
 
 // Validation schema for revenue creation
 const createRevenueSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200),
   amount: z.number().positive('Amount must be positive'),
   description: z.string().min(1, 'Description is required').max(500),
   category: z.enum([
     'PROJECT_PAYMENT',
-    'RETAINER',
-    'MILESTONE',
+    'CONSULTING',
     'SUBSCRIPTION',
-    'CONSULTATION',
     'LICENSE',
-    'COMMISSION',
-    'REFUND',
+    'MAINTENANCE',
+    'SUPPORT',
+    'TRAINING',
     'OTHER'
   ]),
   source: z.enum([
-    'BANK_TRANSFER',
-    'CREDIT_CARD',
-    'PAYPAL',
     'STRIPE',
+    'PAYPAL',
+    'BANK_TRANSFER',
     'CHECK',
+    'CREDIT_CARD',
     'CASH',
     'CRYPTOCURRENCY',
     'OTHER'
   ]),
   status: z.enum(['PENDING', 'RECEIVED', 'CANCELLED']).default('PENDING'),
   date: z.string().datetime(),
-  dueDate: z.string().datetime().optional(),
+
   clientId: z.string().optional(),
   projectId: z.string().optional(),
-  invoiceNumber: z.string().optional(),
+
   taxAmount: z.number().min(0).default(0),
   currency: z.string().length(3).default('USD'),
   exchangeRate: z.number().positive().default(1),
@@ -86,10 +86,9 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.OR = [
-        { description: { contains: search, mode: 'insensitive' } },
-        { invoiceNumber: { contains: search, mode: 'insensitive' } },
-        { notes: { contains: search, mode: 'insensitive' } },
-      ]
+          { description: { contains: search, mode: 'insensitive' } },
+          { notes: { contains: search, mode: 'insensitive' } },
+        ]
     }
 
     if (status) {
@@ -138,7 +137,7 @@ export async function GET(request: NextRequest) {
               status: true,
             },
           },
-          createdBy: {
+          user: {
             select: {
               id: true,
               name: true,
@@ -251,28 +250,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for duplicate invoice number if provided
-    if (validatedData.invoiceNumber) {
-      const existingRevenue = await prisma.revenue.findFirst({
-        where: {
-          invoiceNumber: validatedData.invoiceNumber,
-          clientId: validatedData.clientId,
-        },
-      })
-      if (existingRevenue) {
-        return NextResponse.json(
-          { error: 'Invoice number already exists for this client' },
-          { status: 409 }
-        )
-      }
-    }
+
 
     const revenue = await prisma.revenue.create({
       data: {
         ...validatedData,
         date: new Date(validatedData.date),
-        dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
-        createdById: session.user.id,
+
+        userId: session.user.id,
       },
       include: {
         client: {
@@ -290,7 +275,7 @@ export async function POST(request: NextRequest) {
             status: true,
           },
         },
-        createdBy: {
+        user: {
           select: {
             id: true,
             name: true,
@@ -382,14 +367,14 @@ export async function DELETE(request: NextRequest) {
         id: { in: ids },
         status: 'RECEIVED',
       },
-      select: { id: true, invoiceNumber: true },
+      select: { id: true, notes: true },
     })
 
     if (receivedRevenues.length > 0) {
       return NextResponse.json(
         {
           error: 'Cannot delete received revenues',
-          receivedRevenues: receivedRevenues.map(r => r.invoiceNumber || r.id),
+          receivedRevenues: receivedRevenues.map(r => r.notes || r.id),
         },
         { status: 400 }
       )

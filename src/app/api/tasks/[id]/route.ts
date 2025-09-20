@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -10,8 +10,8 @@ const prisma = new PrismaClient()
 const updateTaskSchema = z.object({
   title: z.string().min(1, 'Task title is required').optional(),
   description: z.string().optional(),
-  assignedToId: z.string().optional(),
-  status: z.enum(['TODO', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
+  assigneeId: z.string().optional(),
+  status: z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'CANCELLED']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   dueDate: z.string().transform((str) => new Date(str)).optional(),
   estimatedHours: z.number().min(0).optional(),
@@ -21,7 +21,7 @@ const updateTaskSchema = z.object({
 // GET /api/tasks/[id] - Get a specific task
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -29,7 +29,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     const task = await prisma.task.findUnique({
       where: { id },
@@ -59,14 +59,14 @@ export async function GET(
             },
           },
         },
-        assignedTo: {
+        assignee: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        createdBy: {
+        creator: {
           select: {
             id: true,
             name: true,
@@ -110,7 +110,7 @@ export async function GET(
         totalHours,
         uniqueContributors,
         timeEntriesCount: task._count.timeEntries,
-        isOverdue: task.dueDate ? new Date() > task.dueDate && task.status !== 'COMPLETED' : false,
+        isOverdue: task.dueDate ? new Date() > task.dueDate && task.status !== 'DONE' : false,
         daysUntilDue: task.dueDate ? Math.ceil((task.dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null,
       },
     }
@@ -128,7 +128,7 @@ export async function GET(
 // PUT /api/tasks/[id] - Update a specific task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -136,7 +136,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const validatedData = updateTaskSchema.parse(body)
 
@@ -153,9 +153,9 @@ export async function PUT(
     }
 
     // Validate assignee if provided
-    if (validatedData.assignedToId) {
+    if (validatedData.assigneeId) {
       const assignee = await prisma.user.findUnique({
-        where: { id: validatedData.assignedToId },
+        where: { id: validatedData.assigneeId },
       })
 
       if (!assignee) {
@@ -187,7 +187,7 @@ export async function PUT(
             },
           },
         },
-        assignedTo: {
+        assignee: {
           select: {
             id: true,
             name: true,
@@ -238,7 +238,7 @@ export async function PUT(
 // DELETE /api/tasks/[id] - Delete a specific task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -246,7 +246,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Check if task exists and has time entries
     const existingTask = await prisma.task.findUnique({

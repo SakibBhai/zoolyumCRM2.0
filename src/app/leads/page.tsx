@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
-import { useLeads, useLeadStats, type Lead } from '@/hooks/useLeads'
+import { useLeads, useLeadStats } from '@/hooks/useLeads'
+import type { Lead } from '@/shared/types'
 import { MainLayout } from '@/components/layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

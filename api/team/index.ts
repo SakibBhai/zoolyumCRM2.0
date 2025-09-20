@@ -1,6 +1,42 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 
+// TeamMember interface
+interface TeamMember {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  position?: string
+  department: string
+  role: string
+  status: string
+  hireDate: string
+  salary?: number
+  hourlyRate?: number
+  skills?: string[]
+  bio?: string
+  avatar?: string
+  address?: {
+    street?: string
+    city?: string
+    state?: string
+    zipCode?: string
+    country?: string
+  }
+  emergencyContact?: {
+    name?: string
+    relationship?: string
+    phone?: string
+  }
+  permissions?: string[]
+  createdAt: string
+  updatedAt: string
+  customFields?: Record<string, any>
+}
+
+
 // Team member validation schema
 const teamMemberSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -35,7 +71,7 @@ const teamMemberSchema = z.object({
 const updateTeamMemberSchema = teamMemberSchema.partial()
 
 // Mock data
-let teamMembers = [
+let teamMembers: TeamMember[] = [
   {
     id: 'sarah-johnson',
     firstName: 'Sarah',
@@ -250,7 +286,7 @@ export const getTeamMembers = (req: Request, res: Response) => {
         member.firstName.toLowerCase().includes(searchTerm) ||
         member.lastName.toLowerCase().includes(searchTerm) ||
         member.email.toLowerCase().includes(searchTerm) ||
-        member.skills.some(skill => skill.toLowerCase().includes(searchTerm))
+        (member.skills || []).some(skill => skill.toLowerCase().includes(searchTerm))
       )
     }
 
@@ -259,10 +295,24 @@ export const getTeamMembers = (req: Request, res: Response) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
       
+      if (!aValue || !bValue) return 0
+
+      
+      
+
+      
       if (sortOrder === 'asc') {
+
+      
         return aValue > bValue ? 1 : -1
+
+      
       } else {
+
+      
         return aValue < bValue ? 1 : -1
+
+      
       }
     })
 
@@ -421,7 +471,7 @@ function getSkillsDistribution() {
   const skillsCount: { [key: string]: number } = {}
   
   teamMembers.forEach(member => {
-    member.skills.forEach(skill => {
+    (member.skills || []).forEach(skill => {
       skillsCount[skill] = (skillsCount[skill] || 0) + 1
     })
   })
@@ -571,7 +621,7 @@ export const getTeamDirectory = (req: Request, res: Response) => {
         role: member.role,
         department: member.department,
         avatar: member.avatar,
-        skills: member.skills.slice(0, 3) // Show only top 3 skills
+        skills: (member.skills || []).slice(0, 3) // Show only top 3 skills
       }))
     
     res.json(directory)

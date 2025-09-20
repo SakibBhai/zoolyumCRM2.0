@@ -1,21 +1,50 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 
+// Project interface
+interface Project {
+  id: string
+  name: string
+  description?: string
+  clientId: string
+  clientName: string
+  status: string
+  priority: string
+  startDate: string
+  endDate: string
+  budget: number
+  actualCost: number
+  progress: number
+  teamMembers: string[]
+  projectManager?: string
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  customFields?: Record<string, any>
+  resources: {
+    type: 'file' | 'link' | 'document' | 'other'
+    name: string
+    description?: string
+    url?: string
+  }[]
+}
+
+
 // Project validation schema
 const projectSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
-  description: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
   clientId: z.string().min(1, 'Client ID is required'),
   status: z.enum(['planning', 'in_progress', 'on_hold', 'completed', 'cancelled']),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
   startDate: z.string(),
   endDate: z.string(),
-  budget: z.number().min(0).optional(),
+  budget: z.number().min(0),
   actualCost: z.number().min(0).optional(),
   progress: z.number().min(0).max(100).default(0),
-  teamMembers: z.array(z.string()).optional(),
+  teamMembers: z.array(z.string()).default([]),
   projectManager: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).default([]),
   customFields: z.record(z.any()).optional(),
   resources: z.array(z.object({
     name: z.string(),
@@ -28,7 +57,7 @@ const projectSchema = z.object({
 const updateProjectSchema = projectSchema.partial()
 
 // Mock data
-let projects = [
+let projects: Project[] = [
   {
     id: '1',
     name: 'Website Redesign',
@@ -215,10 +244,24 @@ export const getProjects = (req: Request, res: Response) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
       
+      if (!aValue || !bValue) return 0
+
+      
+      
+
+      
       if (sortOrder === 'asc') {
+
+      
         return aValue > bValue ? 1 : -1
+
+      
       } else {
+
+      
         return aValue < bValue ? 1 : -1
+
+      
       }
     })
 

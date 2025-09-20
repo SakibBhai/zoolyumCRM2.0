@@ -12,10 +12,10 @@ const leadSchema = z.object({
   email: z.string().email('Invalid email format'),
   phone: z.string().optional(),
   company: z.string().optional(),
-  status: z.enum(['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST']).default('NEW'),
-  source: z.enum(['WEBSITE', 'REFERRAL', 'SOCIAL_MEDIA', 'EMAIL', 'PHONE', 'OTHER']).default('OTHER'),
+  status: z.enum(['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'NEGOTIATION', 'CONVERTED', 'LOST']).default('NEW'),
+  source: z.enum(['WEBSITE', 'SOCIAL', 'REFERRAL', 'EMAIL', 'COLD_CALL']).default('WEBSITE'),
   value: z.number().min(0).optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
   notes: z.string().optional(),
   assignedToId: z.string().optional(),
 })
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       prisma.lead.findMany({
         where,
         include: {
-          assignedTo: {
+          assigned: {
             select: {
               id: true,
               name: true,
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     const validatedData = leadSchema.parse(body)
 
     // Check if lead with email already exists
-    const existingLead = await prisma.lead.findUnique({
+    const existingLead = await prisma.lead.findFirst({
       where: { email: validatedData.email },
     })
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     const lead = await prisma.lead.create({
       data: validatedData,
       include: {
-        assignedTo: {
+        assigned: {
           select: {
             id: true,
             name: true,

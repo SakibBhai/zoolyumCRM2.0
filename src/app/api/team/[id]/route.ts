@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
@@ -23,7 +23,7 @@ const updateTeamMemberSchema = z.object({
 // GET /api/team/[id] - Get specific team member
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -31,7 +31,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -48,9 +48,9 @@ export async function GET(
         email: true,
         role: true,
         department: true,
-        position: true,
+
         phone: true,
-        avatar: true,
+        avatarUrl: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -58,7 +58,7 @@ export async function GET(
         _count: {
           select: {
             assignedLeads: true,
-            assignedClients: true,
+            managedClients: true,
             managedProjects: true,
             assignedTasks: true,
             timeEntries: true,
@@ -71,22 +71,21 @@ export async function GET(
             name: true,
             email: true,
             company: true,
-            status: true,
-            priority: true,
+
+            score: true,
             source: true,
             createdAt: true,
           },
           orderBy: { createdAt: 'desc' },
           take: 10,
         },
-        // Include assigned clients
-        assignedClients: {
+        // Include managed clients
+        managedClients: {
           select: {
             id: true,
             name: true,
             email: true,
             company: true,
-            status: true,
             createdAt: true,
           },
           orderBy: { createdAt: 'desc' },
@@ -203,7 +202,7 @@ export async function GET(
     const completedTasksCount = await prisma.task.count({
       where: {
         assignedToId: id,
-        status: 'COMPLETED',
+        status: 'DONE',
       },
     })
 
@@ -243,7 +242,7 @@ export async function GET(
 // PUT /api/team/[id] - Update specific team member
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -251,7 +250,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -360,7 +359,7 @@ export async function PUT(
 // DELETE /api/team/[id] - Deactivate specific team member (soft delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -368,7 +367,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(

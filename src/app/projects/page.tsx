@@ -11,8 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CalendarDays, Users, DollarSign, Clock, AlertTriangle, CheckCircle, Target, TrendingUp, Loader2, Plus, Search, Filter, MoreHorizontal, Calendar, FileText, PlayCircle, PauseCircle, Building, Folder, Edit } from 'lucide-react'
-import { MainLayout } from '@/components/layout/MainLayout'
-import { useAuth } from '@/hooks/useAuth'
+import { MainLayout } from '@/components/layout/main-layout'
+import { useAuth } from '@/hooks/use-auth'
 import { useProjects, useProjectStats, Project } from '@/hooks/useProjects'
 
 // Mock data removed - using real API data

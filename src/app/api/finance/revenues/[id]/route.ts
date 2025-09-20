@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -36,7 +36,7 @@ const updateRevenueSchema = z.object({
   dueDate: z.string().datetime().optional(),
   clientId: z.string().optional(),
   projectId: z.string().optional(),
-  invoiceNumber: z.string().optional(),
+
   taxAmount: z.number().min(0).optional(),
   currency: z.string().length(3).optional(),
   exchangeRate: z.number().positive().optional(),
@@ -47,7 +47,7 @@ const updateRevenueSchema = z.object({
 // GET /api/finance/revenues/[id] - Get specific revenue
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -59,8 +59,10 @@ export async function GET(
     const includeRelated = searchParams.get('includeRelated') === 'true'
     const includeHistory = searchParams.get('includeHistory') === 'true'
 
+    const { id } = await params
+    
     const revenue = await prisma.revenue.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         client: includeRelated ? {
           select: {
@@ -96,7 +98,7 @@ export async function GET(
             status: true,
           },
         },
-        createdBy: {
+        user: {
           select: {
             id: true,
             name: true,
@@ -129,7 +131,7 @@ export async function GET(
           status: true,
           date: true,
           category: true,
-          invoiceNumber: true,
+          notes: true,
         },
         orderBy: { date: 'desc' },
         take: 10,
@@ -168,7 +170,7 @@ export async function GET(
 // PUT /api/finance/revenues/[id] - Update specific revenue
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -176,12 +178,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
     const body = await request.json()
     const validatedData = updateRevenueSchema.parse(body)
 
     // Check if revenue exists
     const existingRevenue = await prisma.revenue.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         client: true,
         project: true,
@@ -251,23 +254,7 @@ export async function PUT(
       }
     }
 
-    // Check for duplicate invoice number if being updated
-    if (validatedData.invoiceNumber && validatedData.invoiceNumber !== existingRevenue.invoiceNumber) {
-      const clientId = validatedData.clientId || existingRevenue.clientId
-      const duplicateRevenue = await prisma.revenue.findFirst({
-        where: {
-          invoiceNumber: validatedData.invoiceNumber,
-          clientId: clientId,
-          id: { not: params.id },
-        },
-      })
-      if (duplicateRevenue) {
-        return NextResponse.json(
-          { error: 'Invoice number already exists for this client' },
-          { status: 409 }
-        )
-      }
-    }
+
 
     // Validate status transitions
     if (validatedData.status && validatedData.status !== existingRevenue.status) {
@@ -300,7 +287,7 @@ export async function PUT(
     }
 
     const updatedRevenue = await prisma.revenue.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         client: {
@@ -318,7 +305,7 @@ export async function PUT(
             status: true,
           },
         },
-        createdBy: {
+        user: {
           select: {
             id: true,
             name: true,
@@ -348,7 +335,7 @@ export async function PUT(
 // DELETE /api/finance/revenues/[id] - Delete specific revenue
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -356,13 +343,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Check if revenue exists
     const revenue = await prisma.revenue.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         status: true,
-        invoiceNumber: true,
+        notes: true,
         amount: true,
       },
     })
@@ -383,14 +372,13 @@ export async function DELETE(
     }
 
     await prisma.revenue.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({
       message: 'Revenue deleted successfully',
       deletedRevenue: {
         id: revenue.id,
-        invoiceNumber: revenue.invoiceNumber,
         amount: revenue.amount,
       },
     })

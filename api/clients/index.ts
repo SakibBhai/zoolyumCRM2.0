@@ -1,12 +1,42 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 
+// Client type definition
+interface Client {
+  id: string
+  name: string
+  contactPerson: string
+  email: string
+  phone: string
+  address: {
+    street: string
+    city: string
+    state: string
+    zipCode: string
+    country: string
+  }
+  industry: string
+  website: string
+  status: 'active' | 'inactive' | 'prospect' | 'churned'
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum'
+  healthScore: number
+  totalValue: number
+  notes: string
+  tags: string[]
+  assignedTo: string
+  contractStartDate: string
+  contractEndDate: string
+  createdAt: string
+  updatedAt: string
+  customFields: Record<string, any>
+}
+
 // Client validation schema
 const clientSchema = z.object({
   name: z.string().min(1, 'Company name is required'),
   contactPerson: z.string().min(1, 'Contact person is required'),
   email: z.string().email('Invalid email format'),
-  phone: z.string().optional(),
+  phone: z.string().min(1, 'Phone number is required'),
   address: z.object({
     street: z.string().optional(),
     city: z.string().optional(),
@@ -14,7 +44,7 @@ const clientSchema = z.object({
     zipCode: z.string().optional(),
     country: z.string().optional()
   }).optional(),
-  industry: z.string().optional(),
+  industry: z.string().min(1, 'Industry is required'),
   website: z.string().url().optional().or(z.literal('')),
   status: z.enum(['active', 'inactive', 'prospect', 'churned']),
   tier: z.enum(['bronze', 'silver', 'gold', 'platinum']),
@@ -31,7 +61,7 @@ const clientSchema = z.object({
 const updateClientSchema = clientSchema.partial()
 
 // Mock data
-let clients = [
+let clients: Client[] = [
   {
     id: '1',
     name: 'TechCorp Solutions',
@@ -258,7 +288,28 @@ export const createClient = (req: Request, res: Response) => {
     
     const newClient = {
       id: (clients.length + 1).toString(),
-      ...validatedData,
+      name: validatedData.name,
+      contactPerson: validatedData.contactPerson,
+      email: validatedData.email,
+      phone: validatedData.phone,
+      address: {
+        street: validatedData.address?.street || '',
+        city: validatedData.address?.city || '',
+        state: validatedData.address?.state || '',
+        zipCode: validatedData.address?.zipCode || '',
+        country: validatedData.address?.country || ''
+      },
+      industry: validatedData.industry,
+      website: validatedData.website || '',
+      status: validatedData.status,
+      tier: validatedData.tier,
+      healthScore: validatedData.healthScore,
+      totalValue: validatedData.totalValue || 0,
+      notes: validatedData.notes || '',
+      tags: validatedData.tags || [],
+      assignedTo: validatedData.assignedTo || '',
+      contractStartDate: validatedData.contractStartDate || '',
+      contractEndDate: validatedData.contractEndDate || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       customFields: validatedData.customFields || {}
@@ -286,11 +337,20 @@ export const updateClient = (req: Request, res: Response) => {
     
     const validatedData = updateClientSchema.parse(req.body)
     
-    clients[clientIndex] = {
+    const updatedClient: Client = {
       ...clients[clientIndex],
       ...validatedData,
+      address: validatedData.address ? {
+        street: validatedData.address.street || clients[clientIndex].address.street,
+        city: validatedData.address.city || clients[clientIndex].address.city,
+        state: validatedData.address.state || clients[clientIndex].address.state,
+        zipCode: validatedData.address.zipCode || clients[clientIndex].address.zipCode,
+        country: validatedData.address.country || clients[clientIndex].address.country
+      } : clients[clientIndex].address,
       updatedAt: new Date().toISOString()
     }
+    
+    clients[clientIndex] = updatedClient
     
     res.json(clients[clientIndex])
   } catch (error) {

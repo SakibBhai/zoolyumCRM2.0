@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -31,7 +31,7 @@ const updateProposalSchema = z.object({
 // GET /api/proposals/[id] - Get specific proposal
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -39,7 +39,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -59,10 +59,7 @@ export async function GET(
             company: true,
             phone: true,
             address: true,
-            city: true,
-            state: true,
-            zipCode: true,
-            country: true,
+
           },
         },
         project: {
@@ -77,14 +74,11 @@ export async function GET(
             budget: true,
           },
         },
-        createdBy: {
+        creator: {
           select: {
             id: true,
             name: true,
             email: true,
-            phone: true,
-            position: true,
-            department: true,
           },
         },
       },
@@ -100,13 +94,12 @@ export async function GET(
     // Track view if status is SENT and not viewed by creator
     if (
       proposal.status === 'SENT' &&
-      session.user.id !== proposal.createdById
+      session.user.id !== proposal.createdBy
     ) {
       await prisma.proposal.update({
         where: { id },
         data: {
           status: 'VIEWED',
-          viewedAt: new Date(),
         },
       })
       proposal.status = 'VIEWED'
@@ -125,7 +118,7 @@ export async function GET(
 // PUT /api/proposals/[id] - Update specific proposal
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -133,7 +126,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -151,7 +144,7 @@ export async function PUT(
       select: {
         id: true,
         status: true,
-        createdById: true,
+        createdBy: true,
         clientId: true,
         projectId: true,
       },
@@ -171,7 +164,7 @@ export async function PUT(
     })
 
     if (
-      existingProposal.createdById !== session.user.id &&
+      existingProposal.createdBy !== session.user.id &&
       currentUser?.role !== 'ADMIN'
     ) {
       return NextResponse.json(
@@ -223,14 +216,8 @@ export async function PUT(
       updateData.validUntil = new Date(validatedData.validUntil)
     }
 
-    // Set acceptance/rejection timestamps
-    if (validatedData.status === 'ACCEPTED') {
-      updateData.acceptedAt = new Date()
-    } else if (validatedData.status === 'REJECTED') {
-      updateData.rejectedAt = new Date()
-    } else if (validatedData.status === 'SENT') {
-      updateData.sentAt = new Date()
-    }
+    // Note: Timestamp fields like acceptedAt, rejectedAt, sentAt are not in the schema
+    // They would need to be added to the Proposal model if needed
 
     const updatedProposal = await prisma.proposal.update({
       where: { id },
@@ -252,7 +239,7 @@ export async function PUT(
             status: true,
           },
         },
-        createdBy: {
+        creator: {
           select: {
             id: true,
             name: true,
@@ -271,12 +258,12 @@ export async function PUT(
       const project = await prisma.project.create({
         data: {
           name: updatedProposal.title,
-          description: updatedProposal.description || '',
+          description: updatedProposal.content || '',
           clientId: existingProposal.clientId,
           managerId: session.user.id,
           status: 'PLANNING',
           priority: 'MEDIUM',
-          budget: updatedProposal.total,
+          budget: updatedProposal.totalAmount,
           startDate: new Date(),
           endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         },
@@ -318,7 +305,7 @@ export async function PUT(
 // DELETE /api/proposals/[id] - Delete specific proposal
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -326,7 +313,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -341,8 +328,8 @@ export async function DELETE(
       select: {
         id: true,
         status: true,
-        createdById: true,
-        proposalNumber: true,
+        createdBy: true,
+
         title: true,
         projectId: true,
       },
@@ -362,7 +349,7 @@ export async function DELETE(
     })
 
     if (
-      existingProposal.createdById !== session.user.id &&
+      existingProposal.createdBy !== session.user.id &&
       currentUser?.role !== 'ADMIN'
     ) {
       return NextResponse.json(
@@ -411,7 +398,7 @@ export async function DELETE(
       where: { id },
       select: {
         id: true,
-        proposalNumber: true,
+
         title: true,
         status: true,
       },

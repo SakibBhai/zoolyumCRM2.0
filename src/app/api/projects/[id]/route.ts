@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -11,7 +11,7 @@ const updateProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required').optional(),
   description: z.string().optional(),
   managerId: z.string().optional(),
-  status: z.enum(['PLANNING', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED']).optional(),
+  status: z.enum(['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   budget: z.number().min(0).optional(),
   startDate: z.string().transform((str) => new Date(str)).optional(),
@@ -22,7 +22,7 @@ const updateProjectSchema = z.object({
 // GET /api/projects/[id] - Get a specific project
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -30,7 +30,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     const project = await prisma.project.findUnique({
       where: { id },
@@ -42,7 +42,7 @@ export async function GET(
             email: true,
             phone: true,
             company: true,
-            status: true,
+
           },
         },
         manager: {
@@ -52,20 +52,12 @@ export async function GET(
             email: true,
           },
         },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
         tasks: {
           include: {
-            assignedTo: {
+            assignee: {
               select: {
                 id: true,
                 name: true,
-                email: true,
               },
             },
             timeEntries: {
@@ -107,7 +99,7 @@ export async function GET(
       total: project.tasks.length,
       todo: project.tasks.filter(t => t.status === 'TODO').length,
       inProgress: project.tasks.filter(t => t.status === 'IN_PROGRESS').length,
-      completed: project.tasks.filter(t => t.status === 'COMPLETED').length,
+      completed: project.tasks.filter(t => t.status === 'DONE').length,
       cancelled: project.tasks.filter(t => t.status === 'CANCELLED').length,
     }
 
@@ -137,7 +129,7 @@ export async function GET(
 // PUT /api/projects/[id] - Update a specific project
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -145,7 +137,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const validatedData = updateProjectSchema.parse(body)
 
@@ -199,12 +191,24 @@ export async function PUT(
       }
     }
 
+    // Prepare update data
+    const updateData: any = {
+      updatedAt: new Date(),
+    }
+
+    // Only include fields that are actually being updated
+    if (validatedData.name !== undefined) updateData.name = validatedData.name
+    if (validatedData.description !== undefined) updateData.description = validatedData.description
+    if (validatedData.status !== undefined) updateData.status = validatedData.status
+    if (validatedData.priority !== undefined) updateData.priority = validatedData.priority
+    if (validatedData.budget !== undefined) updateData.budget = validatedData.budget
+    if (validatedData.startDate !== undefined) updateData.startDate = validatedData.startDate
+    if (validatedData.endDate !== undefined) updateData.endDate = validatedData.endDate
+    if (validatedData.managerId !== undefined) updateData.managerId = validatedData.managerId
+
     const updatedProject = await prisma.project.update({
       where: { id },
-      data: {
-        ...validatedData,
-        updatedAt: new Date(),
-      },
+      data: updateData,
       include: {
         client: {
           select: {
@@ -260,7 +264,7 @@ export async function PUT(
 // DELETE /api/projects/[id] - Delete a specific project
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -268,7 +272,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Check if project exists and has active tasks
     const existingProject = await prisma.project.findUnique({

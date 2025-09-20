@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -111,13 +111,14 @@ export async function GET(request: NextRequest) {
       startDate = new Date(validatedParams.dateFrom)
       endDate = new Date(validatedParams.dateTo)
     } else {
-      const days = {
+      const daysMap: Record<string, number> = {
         '7d': 7,
         '30d': 30,
         '90d': 90,
         '6m': 180,
         '1y': 365,
-      }[validatedParams.dateRange] || 30
+      }
+      const days = daysMap[validatedParams.dateRange] || 30
 
       startDate = new Date()
       startDate.setDate(startDate.getDate() - days)
@@ -364,7 +365,7 @@ async function generateTaskWidget(params: any, startDate: Date, endDate: Date) {
   }
 
   if (params.filters?.userIds?.length) {
-    baseWhere.assignedToId = { in: params.filters.userIds }
+    baseWhere.assigneeId = { in: params.filters.userIds }
   }
 
   if (params.filters?.projectIds?.length) {
@@ -382,7 +383,7 @@ async function generateTaskWidget(params: any, startDate: Date, endDate: Date) {
   const tasks = await prisma.task.findMany({
     where: baseWhere,
     include: {
-      assignedTo: { select: { id: true, name: true } },
+      assignee: { select: { id: true, name: true } },
       project: { select: { id: true, name: true } },
       timeEntries: {
         select: { hours: true },
@@ -588,10 +589,10 @@ function formatWidgetData(widgetType: string, data: any[], params: any, fieldCon
     case 'chart_area':
       const timeSeriesData = groupDataByTime(data, params.groupBy || 'day', dateField, valueField)
       return {
-        labels: timeSeriesData.map(d => d.period),
+        labels: timeSeriesData.map((d: any) => d.period),
         datasets: [{
           label: params.dataSource,
-          data: timeSeriesData.map(d => d.value),
+          data: timeSeriesData.map((d: any) => d.value),
         }],
       }
 
@@ -755,7 +756,7 @@ function groupDataByTime(data: any[], groupBy: string, dateField: string, valueF
 }
 
 // Helper function to group data by category
-function groupDataByCategory(data: any[], categoryField: string, valueField: any) {
+function groupDataByCategory(data: any[], categoryField: string | ((item: any) => string), valueField: any) {
   return data.reduce((acc, item) => {
     const category = typeof categoryField === 'function' ? categoryField(item) : item[categoryField] || 'Unknown'
     const value = typeof valueField === 'function' ? valueField(item) : item[valueField] || 0

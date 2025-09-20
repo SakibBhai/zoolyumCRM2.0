@@ -1,31 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './use-auth'
+import type { Client } from '@/shared/types'
 
-// Client interface matching the backend schema
-export interface Client {
-  id: string
-  name: string
-  email: string
-  phone?: string
-  company: string
-  status: 'active' | 'inactive' | 'prospect' | 'churned'
-  tier: 'bronze' | 'silver' | 'gold' | 'platinum'
-  healthScore: number
-  totalValue?: number
-  industry?: string
-  website?: string
-  address?: {
-    street?: string
-    city?: string
-    state?: string
-    zipCode?: string
-    country?: string
+interface ClientWithAssignedUser extends Client {
+  assignedTo?: {
+    id: string
+    name: string | null
+    email: string
   }
-  assignedTo?: string
-  tags?: string[]
-  customFields?: Record<string, any>
-  createdAt: string
-  updatedAt: string
+  projects?: {
+    id: string
+    name: string
+    status: string
+  }[]
 }
 
 export interface ClientStats {
@@ -84,7 +71,7 @@ interface UseClientsOptions {
 }
 
 export const useClients = (options: UseClientsOptions = {}) => {
-  const [clients, setClients] = useState<Client[]>([])
+  const [clients, setClients] = useState<ClientWithAssignedUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
@@ -104,9 +91,8 @@ export const useClients = (options: UseClientsOptions = {}) => {
       if (options.page) params.append('page', options.page.toString())
       if (options.limit) params.append('limit', options.limit.toString())
 
-      const response = await fetch(`http://localhost:3001/api/clients?${params}`, {
+      const response = await fetch(`/api/clients?${params}`, {
         headers: {
-          'Authorization': `Bearer ${user?.token}`,
           'Content-Type': 'application/json'
         }
       })

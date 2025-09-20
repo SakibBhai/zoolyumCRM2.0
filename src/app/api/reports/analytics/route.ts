@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
         '90d': 90,
         '6m': 180,
         '1y': 365,
+        'custom': 30, // fallback for custom
       }[validatedParams.dateRange] || 30
 
       startDate = new Date()
@@ -408,7 +409,7 @@ async function generateProjectPerformance(params: any, startDate: Date, endDate:
 
   const projectMetrics = projects.map(project => {
     const totalTasks = project.tasks.length
-    const completedTasks = project.tasks.filter(t => t.status === 'COMPLETED').length
+    const completedTasks = project.tasks.filter(t => t.status === 'DONE').length
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
     const totalHours = project.tasks.reduce(
       (sum, task) => sum + task.timeEntries.reduce((taskSum, entry) => taskSum + entry.hours, 0),
@@ -469,7 +470,7 @@ async function generateTeamProductivity(params: any, startDate: Date, endDate: D
   const tasks = await prisma.task.findMany({
     where: baseWhere,
     include: {
-      assignedTo: { select: { id: true, name: true, email: true } },
+      assignee: { select: { id: true, name: true, email: true } },
       project: { select: { id: true, name: true } },
       timeEntries: {
         select: { hours: true, date: true },
@@ -479,12 +480,12 @@ async function generateTeamProductivity(params: any, startDate: Date, endDate: D
 
   // Group by user
   const userProductivity = tasks.reduce((acc, task) => {
-    const userId = task.assignedTo?.id || 'unassigned'
-    const userName = task.assignedTo?.name || 'Unassigned'
-    
+    const userId = task.assignee?.id || 'unassigned'
+    const userName = task.assignee?.name || 'Unassigned'
+
     if (!acc[userId]) {
       acc[userId] = {
-        user: task.assignedTo || { id: 'unassigned', name: 'Unassigned', email: '' },
+        user: task.assignee || { id: 'unassigned', name: 'Unassigned', email: '' },
         totalTasks: 0,
         completedTasks: 0,
         totalHours: 0,
@@ -493,11 +494,11 @@ async function generateTeamProductivity(params: any, startDate: Date, endDate: D
     }
 
     acc[userId].totalTasks++
-    if (task.status === 'COMPLETED') {
+    if (task.status === 'DONE') {
       acc[userId].completedTasks++
     }
     acc[userId].totalHours += task.timeEntries.reduce((sum, entry) => sum + entry.hours, 0)
-    acc[userId].tasksByPriority[task.priority as keyof typeof acc[userId]['tasksByPriority']]++
+    acc[userId].tasksByPriority[task.priority]++
 
     return acc
   }, {} as Record<string, any>)
@@ -726,7 +727,7 @@ async function generateTaskCompletionRate(params: any, startDate: Date, endDate:
       ...(params.filters?.priorities?.length && { priority: { in: params.filters.priorities } }),
     },
     include: {
-      assignedTo: { select: { id: true, name: true } },
+      assignee: { select: { id: true, name: true } },
       project: { select: { id: true, name: true } },
     },
   })
@@ -740,23 +741,23 @@ async function generateTaskCompletionRate(params: any, startDate: Date, endDate:
       acc[task.priority] = { total: 0, completed: 0 }
     }
     acc[task.priority].total++
-    if (task.status === 'COMPLETED') {
-      acc[task.priority].completed++
+    if (task.status === 'DONE') {
+        acc[task.priority].completed++
     }
     return acc
   }, {} as Record<string, { total: number; completed: number }>)
 
   // Completion rate by user
   const completionByUser = tasks.reduce((acc, task) => {
-    const userId = task.assignedTo?.id || 'unassigned'
-    const userName = task.assignedTo?.name || 'Unassigned'
+    const userId = task.assignee?.id || 'unassigned'
+    const userName = task.assignee?.name || 'Unassigned'
     
     if (!acc[userId]) {
       acc[userId] = { user: { id: userId, name: userName }, total: 0, completed: 0 }
     }
     acc[userId].total++
-    if (task.status === 'COMPLETED') {
-      acc[userId].completed++
+    if (task.status === 'DONE') {
+        acc[userId].completed++
     }
     return acc
   }, {} as Record<string, any>)
@@ -780,8 +781,8 @@ async function generateTaskCompletionRate(params: any, startDate: Date, endDate:
     byUser: userRates,
     summary: {
       totalTasks: tasks.length,
-      completedTasks: tasks.filter(t => t.status === 'COMPLETED').length,
-      overallCompletionRate: tasks.length > 0 ? (tasks.filter(t => t.status === 'COMPLETED').length / tasks.length) * 100 : 0,
+      completedTasks: tasks.filter(t => t.status === 'DONE').length,
+    overallCompletionRate: tasks.length > 0 ? (tasks.filter(t => t.status === 'DONE').length / tasks.length) * 100 : 0,
     },
   }
 }
@@ -810,8 +811,8 @@ async function generateFinancialTrends(params: any, startDate: Date, endDate: Da
   const expenseTimeSeries = groupDataByPeriod(expenses, params.groupBy, 'date')
   
   // Calculate profit trends
-  const profitTrends = revenueTimeSeries.map((revenuePoint, index) => {
-    const expensePoint = expenseTimeSeries[index] || { period: revenuePoint.period, value: 0 }
+  const profitTrends = revenueTimeSeries.map((revenuePoint: any, index) => {
+    const expensePoint: any = expenseTimeSeries[index] || { period: revenuePoint.period, value: 0 }
     return {
       period: revenuePoint.period,
       revenue: revenuePoint.value,
@@ -863,8 +864,8 @@ async function generateResourceUtilization(params: any, startDate: Date, endDate
     const expectedHours = workingDays * 8 // Assuming 8 hours per day
     const utilizationRate = expectedHours > 0 ? (totalHours / expectedHours) * 100 : 0
     
-    const activeTasks = user.assignedTasks.filter(t => t.status !== 'COMPLETED').length
-    const completedTasks = user.assignedTasks.filter(t => t.status === 'COMPLETED').length
+    const activeTasks = user.assignedTasks.filter(t => t.status !== 'DONE').length
+    const completedTasks = user.assignedTasks.filter(t => t.status === 'DONE').length
     
     return {
       user: {

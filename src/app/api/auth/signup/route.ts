@@ -42,10 +42,10 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         email,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         department: department || null,
         phone: phone || null,
-        role: UserRole.EMPLOYEE, // Default role
+        role: UserRole.MEMBER, // Default role
         isActive: true,
       },
       select: {

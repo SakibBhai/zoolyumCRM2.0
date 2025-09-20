@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -487,7 +487,7 @@ async function generateProjectPerformanceReport(startDate: Date, endDate: Date, 
     const totalRevenue = project.revenues.reduce((sum, r) => sum + r.amount + r.taxAmount, 0)
     const totalExpenses = project.expenses.reduce((sum, e) => sum + e.amount + e.taxAmount, 0)
     const totalBudget = project.budgets.reduce((sum, b) => sum + b.totalAmount, 0)
-    const completedTasks = project.tasks.filter(task => task.status === 'COMPLETED').length
+    const completedTasks = project.tasks.filter(task => task.status === 'DONE').length
     const totalTasks = project.tasks.length
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
@@ -557,7 +557,7 @@ async function generateTeamProductivityReport(startDate: Date, endDate: Date, fi
 
   const teamMetrics = users.map(user => {
     const totalHours = user.timeEntries.reduce((sum, entry) => sum + entry.hours, 0)
-    const completedTasks = user.assignedTasks.filter(task => task.status === 'COMPLETED').length
+    const completedTasks = user.assignedTasks.filter(task => task.status === 'DONE').length
     const totalTasks = user.assignedTasks.length
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
     const totalExpenses = user.expenses.reduce((sum, e) => sum + e.amount + e.taxAmount, 0)
@@ -637,7 +637,6 @@ async function generateClientAnalysisReport(startDate: Date, endDate: Date, filt
       id: client.id,
       name: client.name,
       email: client.email,
-      status: client.status,
       totalRevenue,
       totalExpenses,
       profit: totalRevenue - totalExpenses,
@@ -763,7 +762,7 @@ async function generateBudgetAnalysisReport(startDate: Date, endDate: Date, filt
         dailyBurnRate,
         projectedSpend,
         projectedOverrun,
-        categories: budget.categoryAllocations,
+        categories: budget.categories,
       }
     })
   )
@@ -896,13 +895,13 @@ async function generateTaskCompletionReport(startDate: Date, endDate: Date, filt
   const tasks = await prisma.task.findMany({
     where: {
       createdAt: { gte: startDate, lte: endDate },
-      ...(filters?.userIds?.length && { assignedToId: { in: filters.userIds } }),
+      ...(filters?.userIds?.length && { assigneeId: { in: filters.userIds } }),
       ...(filters?.projectIds?.length && { projectId: { in: filters.projectIds } }),
       ...(filters?.statuses?.length && { status: { in: filters.statuses } }),
       ...(filters?.priorities?.length && { priority: { in: filters.priorities } }),
     },
     include: {
-      assignedTo: { select: { id: true, name: true } },
+      assignee: { select: { id: true, name: true } },
       project: { select: { id: true, name: true } },
       timeEntries: { select: { hours: true } },
     },
@@ -910,11 +909,11 @@ async function generateTaskCompletionReport(startDate: Date, endDate: Date, filt
 
   const statusBreakdown = groupDataByField(tasks, 'status', 'id')
   const priorityBreakdown = groupDataByField(tasks, 'priority', 'id')
-  const userBreakdown = groupDataByField(tasks, 'assignedTo.name', 'id')
+  const userBreakdown = groupDataByField(tasks, 'assignee.name', 'id')
   const projectBreakdown = groupDataByField(tasks, 'project.name', 'id')
 
-  const completedTasks = tasks.filter(task => task.status === 'COMPLETED')
-  const overdueTasks = tasks.filter(task => task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'COMPLETED')
+  const completedTasks = tasks.filter(task => task.status === 'DONE')
+  const overdueTasks = tasks.filter(task => task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE')
 
   return {
     tasks: tasks.map(task => ({
@@ -922,13 +921,13 @@ async function generateTaskCompletionReport(startDate: Date, endDate: Date, filt
       title: task.title,
       status: task.status,
       priority: task.priority,
-      assignedTo: task.assignedTo?.name,
+      assignedTo: task.assignee?.name,
       project: task.project?.name,
       createdAt: task.createdAt,
       dueDate: task.dueDate,
-      completedAt: task.completedAt,
+      completedAt: task.updatedAt,
       totalHours: task.timeEntries.reduce((sum, entry) => sum + entry.hours, 0),
-      isOverdue: task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'COMPLETED',
+      isOverdue: task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE',
     })),
     breakdown: {
       byStatus: statusBreakdown,
@@ -941,13 +940,13 @@ async function generateTaskCompletionReport(startDate: Date, endDate: Date, filt
       completedTasks: completedTasks.length,
       completionRate: tasks.length > 0 ? (completedTasks.length / tasks.length) * 100 : 0,
       overdueTasks: overdueTasks.length,
-      averageCompletionTime: completedTasks.length > 0 ? 
-        completedTasks.reduce((sum, task) => {
-          if (task.completedAt && task.createdAt) {
-            return sum + (new Date(task.completedAt).getTime() - new Date(task.createdAt).getTime())
-          }
-          return sum
-        }, 0) / completedTasks.length / (1000 * 60 * 60 * 24) : 0, // in days
+      averageCompletionTime: completedTasks.length > 0 ?
+      completedTasks.reduce((sum, task) => {
+        if (task.updatedAt && task.createdAt) {
+          return sum + (new Date(task.updatedAt).getTime() - new Date(task.createdAt).getTime())
+        }
+        return sum
+      }, 0) / completedTasks.length / (1000 * 60 * 60 * 24) : 0, // in days
     },
   }
 }

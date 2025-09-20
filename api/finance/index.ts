@@ -1,10 +1,100 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 
+// Type definitions
+interface Expense {
+  id: string
+  title: string
+  description: string
+  amount: number
+  currency: string
+  category: string
+  subcategory?: string
+  date: string
+  paymentMethod: string
+  vendor?: string
+  projectId?: string
+  clientId?: string
+  employeeId?: string
+  receiptUrl?: string
+  taxAmount?: number
+  taxRate?: number
+  billable: boolean
+  reimbursable: boolean
+  status: 'pending' | 'approved' | 'rejected' | 'paid'
+  notes?: string
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  approvedAt?: string
+  approvedBy?: string
+  approvalNotes?: string
+  rejectedAt?: string
+  rejectedBy?: string
+  rejectionReason?: string
+  paidAt?: string
+  customFields: Record<string, any>
+}
+
+interface Budget {
+  id: string
+  name: string
+  description?: string
+  category: string
+  totalAmount: number
+  currency: string
+  period: {
+    startDate: string
+    endDate: string
+  }
+  allocations?: Array<{
+    category: string
+    amount: number
+    percentage: number
+  }>
+  projectId?: string
+  departmentId?: string
+  ownerId?: string
+  status: 'draft' | 'active' | 'completed' | 'cancelled'
+  alerts?: {
+    enabled: boolean
+    thresholds: number[]
+  }
+  spent: number
+  remaining: number
+  utilizationRate: number
+  createdAt: string
+  updatedAt: string
+  customFields: Record<string, any>
+}
+
+interface Revenue {
+  id: string
+  title: string
+  description?: string
+  amount: number
+  currency: string
+  source: string
+  date: string
+  clientId?: string
+  projectId?: string
+  invoiceId?: string
+  paymentMethod: string
+  status: 'pending' | 'received' | 'cancelled'
+  taxAmount?: number
+  taxRate?: number
+  notes?: string
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+  receivedAt?: string
+  customFields: Record<string, any>
+}
+
 // Expense validation schema
 const expenseSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  description: z.string().optional(),
+  description: z.string().min(1, 'Description is required'),
   amount: z.number().min(0, 'Amount must be positive'),
   currency: z.string().default('USD'),
   category: z.enum(['office_supplies', 'software', 'hardware', 'travel', 'meals', 'marketing', 'utilities', 'rent', 'insurance', 'legal', 'consulting', 'other']),
@@ -80,7 +170,7 @@ const revenueSchema = z.object({
 const updateRevenueSchema = revenueSchema.partial()
 
 // Mock data
-let expenses = [
+let expenses: Expense[] = [
   {
     id: 'exp-001',
     title: 'Adobe Creative Suite License',
@@ -233,7 +323,7 @@ let expenses = [
   }
 ]
 
-let budgets = [
+let budgets: Budget[] = [
   {
     id: 'budget-001',
     name: 'Q1 2024 Operations Budget',
@@ -345,7 +435,7 @@ let budgets = [
   }
 ]
 
-let revenues = [
+let revenues: Revenue[] = [
   {
     id: 'rev-001',
     title: 'Acme Corp - E-commerce Project Payment 1',
@@ -526,6 +616,8 @@ export const getExpenses = (req: Request, res: Response) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
       
+      if (!aValue || !bValue) return 0
+      
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1
       } else {
@@ -680,6 +772,8 @@ export const getBudgets = (req: Request, res: Response) => {
     filteredBudgets.sort((a, b) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
+      
+      if (!aValue || !bValue) return 0
       
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1
@@ -843,6 +937,8 @@ export const getRevenues = (req: Request, res: Response) => {
     filteredRevenues.sort((a, b) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
+      
+      if (!aValue || !bValue) return 0
       
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1

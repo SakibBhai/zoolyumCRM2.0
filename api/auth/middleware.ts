@@ -257,7 +257,7 @@ export const login = (req: Request, res: Response) => {
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: '7d' }
     )
     
     // Return user data without sensitive information
@@ -266,7 +266,7 @@ export const login = (req: Request, res: Response) => {
     res.json({
       user: userResponse,
       token,
-      expiresIn: JWT_EXPIRES_IN
+      expiresIn: '7d'
     })
   } catch (error) {
     res.status(500).json({ error: 'Login failed' })
@@ -337,12 +337,12 @@ export const refreshToken = (req: Request, res: Response) => {
     const token = jwt.sign(
       { userId: req.user.id, email: req.user.email, role: req.user.role },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: '7d' }
     )
     
     res.json({
       token,
-      expiresIn: JWT_EXPIRES_IN
+      expiresIn: '7d'
     })
   } catch (error) {
     res.status(500).json({ error: 'Token refresh failed' })
@@ -387,6 +387,8 @@ export const getUsers = (req: Request, res: Response) => {
     filteredUsers.sort((a, b) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
+      
+      if (!aValue || !bValue) return 0
       
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1

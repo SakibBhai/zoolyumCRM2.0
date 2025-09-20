@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -11,8 +11,8 @@ const createTaskSchema = z.object({
   title: z.string().min(1, 'Task title is required'),
   description: z.string().optional(),
   projectId: z.string().min(1, 'Project ID is required'),
-  assignedToId: z.string().optional(),
-  status: z.enum(['TODO', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).default('TODO'),
+  assigneeId: z.string().optional(),
+  status: z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'CANCELLED']).default('TODO'),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
   dueDate: z.string().transform((str) => new Date(str)).optional(),
   estimatedHours: z.number().min(0).optional(),
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const priority = searchParams.get('priority')
     const projectId = searchParams.get('projectId')
-    const assignedToId = searchParams.get('assignedToId')
+    const assigneeId = searchParams.get('assigneeId')
     const dueDateFrom = searchParams.get('dueDateFrom')
     const dueDateTo = searchParams.get('dueDateTo')
     const sortBy = searchParams.get('sortBy') || 'createdAt'
@@ -67,8 +67,8 @@ export async function GET(request: NextRequest) {
       where.projectId = projectId
     }
 
-    if (assignedToId) {
-      where.assignedToId = assignedToId
+    if (assigneeId) {
+      where.assigneeId = assigneeId
     }
 
     if (dueDateFrom || dueDateTo) {
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
               },
             },
           },
-          assignedTo: {
+          assignee: {
             select: {
               id: true,
               name: true,
@@ -190,9 +190,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate that assignee exists if provided
-    if (validatedData.assignedToId) {
+    if (validatedData.assigneeId) {
       const assignee = await prisma.user.findUnique({
-        where: { id: validatedData.assignedToId },
+        where: { id: validatedData.assigneeId },
       })
 
       if (!assignee) {
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
     const task = await prisma.task.create({
       data: {
         ...validatedData,
-        createdById: session.user.id,
+        createdBy: session.user.id,
       },
       include: {
         project: {
@@ -223,14 +223,14 @@ export async function POST(request: NextRequest) {
             },
           },
         },
-        assignedTo: {
+        assignee: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        createdBy: {
+        creator: {
           select: {
             id: true,
             name: true,
@@ -278,9 +278,9 @@ export async function PUT(request: NextRequest) {
     const validatedData = updateTaskSchema.parse(data)
 
     // Validate assignee if provided
-    if (validatedData.assignedToId) {
+    if (validatedData.assigneeId) {
       const assignee = await prisma.user.findUnique({
-        where: { id: validatedData.assignedToId },
+        where: { id: validatedData.assigneeId },
       })
 
       if (!assignee) {

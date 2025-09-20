@@ -1,14 +1,14 @@
 {
   "..\\node_modules\\.pnpm\\next@15.1.3_react-dom@18.3.1_react@18.3.1__react@18.3.1\\node_modules\\next\\dist\\client\\index.js -> ../pages/_app": {
-    "id": "..\\node_modules\\.pnpm\\next@15.1.3_react-dom@18.3.1_react@18.3.1__react@18.3.1\\node_modules\\next\\dist\\client\\index.js -> ../pages/_app",
+    "id": 9185,
     "files": [
-      "static/chunks/fallback/node_modules_pnpm_next_15_1_3_react-dom_18_3_1_react_18_3_1__react_18_3_1_node_modules_next_d-2b87c3.js"
+      "static/chunks/9185.e13d83462ef4adb6.js"
     ]
   },
   "..\\node_modules\\.pnpm\\next@15.1.3_react-dom@18.3.1_react@18.3.1__react@18.3.1\\node_modules\\next\\dist\\client\\index.js -> ../pages/_error": {
-    "id": "..\\node_modules\\.pnpm\\next@15.1.3_react-dom@18.3.1_react@18.3.1__react@18.3.1\\node_modules\\next\\dist\\client\\index.js -> ../pages/_error",
+    "id": 6624,
     "files": [
-      "static/chunks/fallback/node_modules_pnpm_next_15_1_3_react-dom_18_3_1_react_18_3_1__react_18_3_1_node_modules_next_d-0a2997.js"
+      "static/chunks/6624.f8e3f64e6c16f525.js"
     ]
   }
 }

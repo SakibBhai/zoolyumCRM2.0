@@ -102,8 +102,8 @@ export function Sidebar() {
       
       {/* Sidebar */}
       <div className={cn(
-        "fixed left-0 top-0 z-50 h-full bg-white border-r border-gray-100 transition-all duration-300 lg:relative lg:translate-x-0 shadow-sm",
-        isCollapsed ? "-translate-x-full lg:w-16" : "w-64 translate-x-0"
+        "fixed left-0 top-0 z-50 h-full bg-white border-r border-gray-100 transition-all duration-300 shadow-sm",
+        isCollapsed ? "-translate-x-full lg:w-16 lg:translate-x-0" : "w-64 translate-x-0 lg:w-64"
       )}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">

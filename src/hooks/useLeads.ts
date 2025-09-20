@@ -1,27 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import type { Lead } from '@/shared/types'
 
-interface Lead {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone?: string
-  company?: string
-  position?: string
-  source: 'website' | 'referral' | 'social' | 'email' | 'phone' | 'event' | 'other'
-  status: 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  value?: number
-  notes?: string
-  tags?: string[]
-  assignedTo?: string
-  expectedCloseDate?: string
-  lastContactDate?: string
-  nextFollowUpDate?: string
-  createdAt: string
-  updatedAt: string
-  customFields?: Record<string, any>
+interface LeadWithAssignedUser extends Lead {
+  assignedTo?: {
+    id: string
+    name: string | null
+    email: string
+  }
 }
 
 interface LeadStats {
@@ -35,7 +21,7 @@ interface LeadStats {
 }
 
 interface LeadsResponse {
-  leads: Lead[]
+  leads: LeadWithAssignedUser[]
   pagination: {
     page: number
     limit: number
@@ -57,7 +43,7 @@ interface UseLeadsOptions {
 }
 
 export const useLeads = (options: UseLeadsOptions = {}) => {
-  const [leads, setLeads] = useState<Lead[]>([])
+  const [leads, setLeads] = useState<LeadWithAssignedUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({

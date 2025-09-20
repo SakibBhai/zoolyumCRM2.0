@@ -1,6 +1,33 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 
+// Task interface
+interface Task {
+  id: string
+  title: string
+  description?: string
+  status: string
+  priority: string
+  assignedTo?: string
+  assignedToName?: string
+  projectId?: string
+  projectName?: string
+  clientId?: string
+  clientName?: string
+  dueDate?: string
+  estimatedHours?: number
+  actualHours?: number
+  progress?: number
+  tags?: string[]
+  dependencies?: string[]
+  createdBy?: string
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+  customFields?: Record<string, any>
+}
+
+
 // Task validation schema
 const taskSchema = z.object({
   title: z.string().min(1, 'Task title is required'),
@@ -19,10 +46,12 @@ const taskSchema = z.object({
   customFields: z.record(z.any()).optional()
 })
 
-const updateTaskSchema = taskSchema.partial()
+const updateTaskSchema = taskSchema.partial().extend({
+  completedAt: z.string().optional()
+})
 
 // Mock data
-let tasks = [
+let tasks: Task[] = [
   {
     id: '1',
     title: 'Design Homepage Wireframes',
@@ -240,10 +269,24 @@ export const getTasks = (req: Request, res: Response) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
       
+      if (!aValue || !bValue) return 0
+
+      
+      
+
+      
       if (sortOrder === 'asc') {
+
+      
         return aValue > bValue ? 1 : -1
+
+      
       } else {
+
+      
         return aValue < bValue ? 1 : -1
+
+      
       }
     })
 
@@ -393,7 +436,7 @@ export const getTaskStats = (req: Request, res: Response) => {
       },
       overdue: overdueTasks.length,
       completionRate: tasks.length > 0 ? (tasks.filter(t => t.status === 'completed').length / tasks.length) * 100 : 0,
-      averageProgress: tasks.length > 0 ? tasks.reduce((sum, task) => sum + task.progress, 0) / tasks.length : 0,
+      averageProgress: tasks.length > 0 ? tasks.reduce((sum, task) => sum + (task.progress || 0), 0) / tasks.length : 0,
       totalEstimatedHours: tasks.reduce((sum, task) => sum + (task.estimatedHours || 0), 0),
       totalActualHours: tasks.reduce((sum, task) => sum + (task.actualHours || 0), 0),
       productivity: {

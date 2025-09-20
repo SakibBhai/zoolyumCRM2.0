@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 
@@ -25,7 +25,7 @@ const updateExpenseSchema = z.object({
 // GET /api/finance/expenses/[id] - Get a specific expense
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -33,7 +33,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -62,7 +62,7 @@ export async function GET(
             id: true,
             name: true,
             email: true,
-            avatar: true,
+            avatarUrl: true,
           },
         },
         project: {
@@ -126,7 +126,7 @@ export async function GET(
 // PUT /api/finance/expenses/[id] - Update a specific expense
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -134,7 +134,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -246,7 +246,7 @@ export async function PUT(
             id: true,
             name: true,
             email: true,
-            avatar: true,
+            avatarUrl: true,
           },
         },
         project: {
@@ -297,7 +297,7 @@ export async function PUT(
 // DELETE /api/finance/expenses/[id] - Delete a specific expense
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -305,7 +305,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
